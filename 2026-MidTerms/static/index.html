@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Civic Votes Search</title>
+    <link rel="stylesheet" href="/style.css?v=20260417" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">118th-119th Congress Search</p>
+          <h1>Find a 2023-2026 law and see how your delegation voted.</h1>
+          <p class="subcopy">
+            Search enacted bills from the 118th and 119th Congresses, then compare the House and Senate votes for your local delegation in one place, with a small featured set of historical comparison bills at the top.
+          </p>
+        </div>
+        <div class="hero-card">
+          <p class="hero-card-label">What this prototype does</p>
+          <ul class="hero-list">
+            <li>Search by bill title, bill number, or public law number</li>
+            <li>Look up your senators and House member by state and district</li>
+            <li>Show historical roll call votes from official congressional sources</li>
+          </ul>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel controls-panel">
+          <div class="controls-grid">
+            <label class="field">
+              <span>Bill search</span>
+              <input id="billSearch" type="search" placeholder="Try H.R. 1 or budget" autocomplete="off" />
+            </label>
+
+            <label class="field">
+              <span>State</span>
+              <select id="stateSelect"></select>
+            </label>
+
+            <label class="field">
+              <span>House district</span>
+              <input id="districtInput" type="text" inputmode="numeric" placeholder="12" />
+            </label>
+
+            <div class="field location-field">
+              <span>Auto-fill</span>
+              <button id="useLocationButton" class="location-button" type="button">Use My Location</button>
+            </div>
+          </div>
+
+          <div class="helper-row">
+            <p id="statusMessage" class="status-message">Loading featured bills.</p>
+            <button id="clearButton" class="ghost-button" type="button">Clear</button>
+          </div>
+        </section>
+
+        <section class="results-layout">
+          <aside class="panel search-panel">
+            <div class="panel-heading">
+              <h2>Matches</h2>
+              <span id="matchCount" class="pill">0 results</span>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+          </aside>
+
+          <section class="detail-stack">
+            <section id="emptyState" class="panel empty-panel">
+              <h2>Pick a bill to unlock the vote breakdown</h2>
+              <p>
+                This prototype focuses on enacted laws from the 118th and 119th Congresses, plus a small featured comparison set. Choose a result on the left and we will pull the official House and Senate roll calls.
+              </p>
+            </section>
+
+            <section id="billDetail" class="detail-hidden">
+              <article class="panel bill-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p id="billLabel" class="eyebrow"></p>
+                    <h2 id="billTitle"></h2>
+                  </div>
+                  <span id="lawBadge" class="law-badge"></span>
+                </div>
+                <p id="billMeta" class="bill-meta"></p>
+              </article>
+
+              <article class="panel delegation-panel">
+                <div class="panel-heading">
+                  <h2>Your delegation</h2>
+                </div>
+                <div id="delegationCards" class="delegation-grid"></div>
+              </article>
+
+              <article class="panel votes-panel">
+                <div class="panel-heading">
+                  <h2>How they voted</h2>
+                </div>
+                <div id="voteTimeline" class="vote-timeline"></div>
+              </article>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

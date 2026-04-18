@@ -1,0 +1,527 @@
+:root {
+  --bg: #ffffff;
+  --text: #000000;
+  --border: #000000;
+  --font-stack: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono-stack: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-stack);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+body {
+  background: #ffffff;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: #000000;
+}
+
+button {
+  appearance: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-shell {
+  width: min(1440px, calc(100% - 4rem));
+  margin: 0 auto;
+  padding: 3rem 0 6rem;
+}
+
+.workspace,
+.detail-stack,
+.search-results,
+.vote-timeline,
+.delegation-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.hero-copy,
+.hero-card,
+.panel,
+.delegate-card,
+.vote-card,
+.result-card,
+.search-empty,
+.inline-note {
+  background: #ffffff;
+  border: 1px solid #000000;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.hero-copy,
+.hero-card,
+.panel,
+.delegate-card,
+.vote-card,
+.result-card,
+.search-empty,
+.inline-note {
+  padding: 2rem;
+}
+
+.hero h1,
+.panel h2,
+.vote-card h3,
+.delegate-card h3,
+.result-card strong,
+.empty-panel h2 {
+  margin: 0;
+  font-family: var(--font-stack);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.hero h1 {
+  max-width: 11ch;
+  font-size: clamp(2.8rem, 7vw, 6.2rem);
+  line-height: 0.88;
+}
+
+.panel h2,
+.empty-panel h2 {
+  font-size: clamp(1.4rem, 2.6vw, 2.35rem);
+  line-height: 1;
+}
+
+.vote-card h3,
+.delegate-card h3,
+.result-card strong {
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  line-height: 1.12;
+}
+
+.subcopy,
+.status-message,
+.result-meta,
+.delegate-meta,
+.vote-meta,
+.vote-description,
+.bill-meta,
+.muted,
+.hero-list,
+.contact-link,
+.source-link {
+  margin: 0;
+  color: #000000;
+}
+
+.subcopy {
+  max-width: 50ch;
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.eyebrow,
+.hero-card-label,
+.result-label,
+.delegate-role,
+.member-role,
+.vote-chamber,
+.vote-roll,
+.pill,
+.law-badge,
+.field span,
+.search-section-label,
+.featured-tag {
+  margin: 0;
+  font-family: var(--font-stack);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.hero-list {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(220px, auto);
+  gap: 1.25rem;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.field input,
+.field select,
+.ghost-button,
+.location-button {
+  width: 100%;
+  min-height: 4.25rem;
+  padding: 0 1.2rem;
+  border: 1px solid #000000;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.field input,
+.field select {
+  background: #ffffff;
+}
+
+.field input::placeholder {
+  color: #000000;
+  opacity: 1;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: 1px solid #000000;
+  outline-offset: 0;
+}
+
+.helper-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.status-message {
+  max-width: 60ch;
+}
+
+.location-field {
+  align-self: end;
+}
+
+.ghost-button,
+.location-button {
+  background: #000000;
+  color: #ffffff;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 900;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.ghost-button:hover,
+.ghost-button:focus-visible,
+.location-button:hover,
+.location-button:focus-visible,
+.result-card:hover,
+.result-card:focus-visible {
+  background: #ffffff;
+  color: #000000;
+  outline: none;
+}
+
+.location-button:disabled,
+.ghost-button:disabled {
+  cursor: wait;
+}
+
+.results-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.detail-stack {
+  gap: 2rem;
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-results,
+.vote-timeline,
+.delegation-grid {
+  gap: 1rem;
+}
+
+.pill,
+.law-badge,
+.vote-badge,
+.vote-chamber,
+.vote-roll {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #000000;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+}
+
+.result-card {
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.result-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.result-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.search-section-label,
+.featured-tag {
+  font-family: var(--mono-stack);
+}
+
+.search-section-label {
+  padding: 0.15rem 0;
+}
+
+.featured-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #000000;
+}
+
+.result-arrow {
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.result-arrow::after {
+  content: " +";
+}
+
+.result-card:hover .result-meta,
+.result-card:hover .result-label,
+.result-card:hover .result-arrow,
+.result-card:focus-visible .result-meta,
+.result-card:focus-visible .result-label,
+.result-card:focus-visible .result-arrow {
+  color: #000000;
+}
+
+.detail-hidden {
+  display: none;
+}
+
+.empty-panel {
+  min-height: 320px;
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+
+.bill-panel h2 {
+  font-size: clamp(1.8rem, 3vw, 3rem);
+}
+
+.delegation-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.delegate-role,
+.member-role {
+  margin-bottom: 0.5rem;
+}
+
+.delegate-meta,
+.member-role,
+.vote-meta,
+.vote-description {
+  margin-top: 0.5rem;
+}
+
+.member-note {
+  margin: 0.6rem 0 0;
+  max-width: 42ch;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.contact-row {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.contact-link,
+.source-link {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.vote-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.vote-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.member-votes {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.member-vote {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #000000;
+}
+
+.member-name {
+  margin: 0;
+  font-family: var(--font-stack);
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.vote-badge {
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.vote-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.vote-yes,
+.vote-no,
+.vote-present,
+.vote-neutral {
+  background: #ffffff;
+  color: #000000;
+}
+
+@media (max-width: 1120px) {
+  .hero,
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: min(100% - 2rem, 1440px);
+    padding: 1.5rem 0 4rem;
+  }
+
+  .hero-copy,
+  .hero-card,
+  .panel,
+  .delegate-card,
+  .vote-card,
+  .result-card,
+  .search-empty,
+  .inline-note {
+    padding: 1.5rem;
+  }
+
+  .hero {
+    gap: 1.25rem;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .helper-row,
+  .panel-heading,
+  .member-vote,
+  .result-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ghost-button,
+  .location-button {
+    width: 100%;
+  }
+
+  .hero h1 {
+    max-width: 100%;
+    font-size: clamp(2.2rem, 12vw, 3.8rem);
+  }
+}
