@@ -1,21 +1,50 @@
-# Civic Votes Search Prototype
+# 2026 MidTerms V1.0
 
-This is a small Python + vanilla JavaScript prototype for searching 2025-2026 laws from the 119th Congress and showing how a user's senators and House member voted on those measures.
+Minimalist legislative tracker for the 2026 Midterms with a monochrome editorial UI and live congressional vote data.
 
-## What it does
+## Stack
 
-- Searches enacted 119th Congress laws by title, bill number, or public law number.
-- Looks up the user's delegation from the official Congress.gov member API.
-- Pulls passage-related House and Senate roll calls from the official Clerk of the House and Senate vote feeds.
+- Flask backend
+- Vanilla JavaScript frontend
+- Congress.gov API
+- Gunicorn for production hosting
 
-## Data sources
+## Local Run
 
-- Congress.gov API for laws, bill actions, and member lookups
-- Clerk of the House XML roll-call feed
-- Senate.gov XML roll-call feed
+1. Create a virtual environment.
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Set your API key:
+
+```bash
+export CONGRESS_API_KEY=your_key_here
+```
+
+4. Start the app:
+
+```bash
+python3 server.py
+```
+
+Then open `http://127.0.0.1:8000`.
+
+## Render Deployment
+
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `gunicorn server:app`
+
+### Environment Variables
+
+- `CONGRESS_API_KEY`
+
+Do not commit your real API key to GitHub. Store it in Render under `Environment`.
 
 ## Notes
 
-- This version focuses on the 119th Congress, which covers 2025 and 2026.
-- The UI expects a state and House district. For at-large districts, use `0`.
-- The bill search is intentionally scoped to enacted laws so the results stay fast and easy to understand.
+- The frontend is served from `static/`.
+- The app includes featured bills plus searchable congressional vote history.
+- House district input should use `0` for at-large districts.

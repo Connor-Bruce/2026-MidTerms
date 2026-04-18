@@ -132,7 +132,7 @@ function setLocationButtonState(isLoading) {
   }
 
   elements.useLocationButton.disabled = isLoading;
-  elements.useLocationButton.textContent = isLoading ? "Finding..." : "Use My Location";
+  elements.useLocationButton.textContent = isLoading ? "LOCATING..." : "LOCATE";
 }
 
 function loadJsonp(url) {

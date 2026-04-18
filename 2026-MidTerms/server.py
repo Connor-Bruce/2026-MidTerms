@@ -7,14 +7,14 @@ import re
 import time
 from functools import lru_cache
 from html import unescape
-from http import HTTPStatus
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
+
+from flask import Flask, jsonify, send_from_directory, request
 
 # --- 1. CONFIG & ENVIRONMENT ---
 try:
@@ -26,7 +26,7 @@ except ImportError:
 
 ROOT_DIR = Path(__file__).resolve().parent
 STATIC_DIR = ROOT_DIR / "static"
-HOST = "127.0.0.1"
+HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8000"))
 CONGRESS_API_ROOT = "https://api.congress.gov/v3"
 CURRENT_CONGRESS = 119
@@ -145,6 +145,9 @@ PARTY_NAME_TO_ABBREV = {
     "Independent Democrat": "ID",
     "Libertarian": "L",
 }
+
+app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="")
+app.json.sort_keys = False
 
 
 # --- 2. XML + API HELPERS ---
@@ -1060,88 +1063,75 @@ def build_bill_vote_payload(
     }
 
 
-# --- 5. SERVER HANDLER ---
-class CivicVotesHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, directory=str(STATIC_DIR), **kwargs)
+# --- 5. FLASK ROUTES ---
+def query_value(key: str) -> str:
+    value = request.args.get(key, "").strip()
+    if not value:
+        raise ValueError(f"Missing required query parameter: {key}")
+    return value
 
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
 
-        if parsed.path == "/api/config":
-            self.respond_json(
-                {
-                    "hasApiKey": bool(CONGRESS_API_KEY),
-                    "congress": CURRENT_CONGRESS,
-                    "supportedYears": sorted(SUPPORTED_YEARS),
-                    "states": [{"code": code, "name": name} for code, name in STATE_OPTIONS],
-                }
-            )
-            return
+def optional_query_value(key: str) -> str | None:
+    value = request.args.get(key, "").strip()
+    return value or None
 
-        if parsed.path == "/api/search-bills":
-            try:
-                featured_only = self.optional_query_value(parsed.query, "featured")
-                query = self.optional_query_value(parsed.query, "q") or ""
-                results = featured_laws() if (featured_only or "").lower() in {"1", "true", "yes"} else search_laws(query)
-                self.respond_json({"results": results})
-            except Exception as exc:  # noqa: BLE001
-                self.respond_error_json(exc)
-            return
 
-        if parsed.path == "/api/bill-votes":
-            try:
-                congress_value = self.optional_query_value(parsed.query, "congress")
-                bill_type = self.query_value(parsed.query, "billType").lower()
-                bill_number = self.query_value(parsed.query, "billNumber")
-                state = self.query_value(parsed.query, "state").upper()
-                district = self.optional_query_value(parsed.query, "district")
-                payload = build_bill_vote_payload(int(congress_value) if congress_value else None, bill_type, bill_number, state, district)
-                self.respond_json(payload)
-            except Exception as exc:  # noqa: BLE001
-                self.respond_error_json(exc)
-            return
+def error_status(error: Exception) -> int:
+    if isinstance(error, ValueError):
+        return 400
+    if isinstance(error, RuntimeError):
+        return 412
+    if isinstance(error, (HTTPError, URLError)):
+        return 502
+    return 500
 
-        super().do_GET()
 
-    def query_value(self, query_string: str, key: str) -> str:
-        parsed = parse_qs(query_string, keep_blank_values=True)
-        if key not in parsed or not parsed[key]:
-            raise ValueError(f"Missing required query parameter: {key}")
-        return parsed[key][0]
+@app.get("/")
+def index() -> Any:
+    return send_from_directory(STATIC_DIR, "index.html")
 
-    def optional_query_value(self, query_string: str, key: str) -> str | None:
-        parsed = parse_qs(query_string, keep_blank_values=True)
-        if key not in parsed or not parsed[key]:
-            return None
-        value = parsed[key][0].strip()
-        return value or None
 
-    def respond_json(self, payload: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
-        body = json.dumps(payload).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+@app.get("/api/config")
+def api_config() -> Any:
+    return jsonify(
+        {
+            "hasApiKey": bool(CONGRESS_API_KEY),
+            "congress": CURRENT_CONGRESS,
+            "supportedYears": sorted(SUPPORTED_YEARS),
+            "states": [{"code": code, "name": name} for code, name in STATE_OPTIONS],
+        }
+    )
 
-    def respond_error_json(self, error: Exception) -> None:
-        if isinstance(error, ValueError):
-            status = HTTPStatus.BAD_REQUEST
-        elif isinstance(error, RuntimeError):
-            status = HTTPStatus.PRECONDITION_FAILED
-        elif isinstance(error, (HTTPError, URLError)):
-            status = HTTPStatus.BAD_GATEWAY
-        else:
-            status = HTTPStatus.INTERNAL_SERVER_ERROR
-        self.respond_json({"error": str(error)}, status=status)
+
+@app.get("/api/search-bills")
+def api_search_bills() -> Any:
+    try:
+        featured_only = optional_query_value("featured")
+        query = optional_query_value("q") or ""
+        results = featured_laws() if (featured_only or "").lower() in {"1", "true", "yes"} else search_laws(query)
+        return jsonify({"results": results})
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
+
+
+@app.get("/api/bill-votes")
+def api_bill_votes() -> Any:
+    try:
+        congress_value = optional_query_value("congress")
+        bill_type = query_value("billType").lower()
+        bill_number = query_value("billNumber")
+        state = query_value("state").upper()
+        district = optional_query_value("district")
+        payload = build_bill_vote_payload(int(congress_value) if congress_value else None, bill_type, bill_number, state, district)
+        return jsonify(payload)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
 
 
 def main() -> None:
     print(f"--- DEBUG: API Key found? {'YES' if CONGRESS_API_KEY else 'NO'} ---")
-    server = ThreadingHTTPServer((HOST, PORT), CivicVotesHandler)
     print(f"Serving at http://{HOST}:{PORT}")
-    server.serve_forever()
+    app.run(host=HOST, port=PORT, debug=False)
 
 
 if __name__ == "__main__":
