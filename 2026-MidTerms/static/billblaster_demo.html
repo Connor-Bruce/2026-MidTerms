@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BillBlaster x V1 Demo</title>
-    <link rel="stylesheet" href="/billblaster.css?v=20260419d" />
+    <link rel="stylesheet" href="/billblaster.css?v=20260419e" />
   </head>
   <body class="billblaster-demo">
     <div class="demo-banner">BILLBLASTER x V1</div>
@@ -19,14 +19,11 @@
             </div>
             <h1>Find a 2023-2026 law and see how your delegation voted.</h1>
           </div>
-          <p class="subcopy">
-            A red-and-black demo shell for BillBlaster, built on the same legislative data flow as V1 with ZIP-first representative lookup, direct finance profile links, and a Trump Agenda alignment frame.
-          </p>
         </div>
       </header>
 
       <main class="workspace">
-        <section class="panel controls-panel">
+        <section class="panel controls-panel search-hub">
           <div class="controls-grid demo-controls-grid">
             <label class="field">
               <span>ZIP code</span>
@@ -88,7 +85,7 @@
         <section id="representativesModule" class="panel representatives-module detail-hidden">
           <div class="panel-heading">
             <div>
-              <h2>Your Representatives</h2>
+              <h2>Your Delegation</h2>
               <p id="representativesMeta" class="bill-meta">Set your ZIP or district to pin your current delegation here.</p>
             </div>
           </div>
@@ -128,9 +125,6 @@
               </article>
 
               <article class="panel delegation-panel">
-                <div class="panel-heading">
-                  <h2>Your delegation</h2>
-                </div>
                 <div id="delegationCards" class="delegation-grid"></div>
               </article>
 

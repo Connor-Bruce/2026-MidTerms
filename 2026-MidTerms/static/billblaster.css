@@ -39,6 +39,10 @@ body.billblaster-demo,
   grid-template-columns: 1fr;
 }
 
+.billblaster-demo .hero-copy {
+  max-width: 56rem;
+}
+
 .demo-banner {
   width: 100%;
   padding: 0.9rem 2rem;
@@ -162,6 +166,11 @@ body.billblaster-demo,
   line-height: 1.6;
   letter-spacing: 0.04em;
   text-transform: none;
+}
+
+.billblaster-demo .search-hub {
+  width: min(1120px, 100%);
+  margin: 0 auto;
 }
 
 .billblaster-demo .member-note {
