@@ -269,6 +269,38 @@
         return 50;
       }
 
+      function normalizePartyCode(value) {
+        const normalized = String(value || "").trim().toUpperCase();
+        if (normalized === "D" || normalized === "DEMOCRAT" || normalized === "DEMOCRATIC") {
+          return "D";
+        }
+        if (normalized === "R" || normalized === "REPUBLICAN") {
+          return "R";
+        }
+        return normalized || "";
+      }
+
+      function displayMemberName(member, fallbackName = "") {
+        const displayName = String(member?.displayName || "").trim();
+        if (displayName) {
+          return displayName;
+        }
+
+        const firstName = String(member?.firstName || "").trim();
+        const lastName = String(member?.lastName || "").trim();
+        const combined = `${firstName} ${lastName}`.trim();
+        if (combined) {
+          return combined;
+        }
+
+        const listName = String(member?.listName || "").trim();
+        if (listName) {
+          return listName;
+        }
+
+        return fallbackName || "Unknown member";
+      }
+
       function describeAlignment(entry) {
         if (!entry) {
           return {
@@ -325,7 +357,7 @@
       }
 
       function resolveCardEntry(card) {
-        const name = card.querySelector("h3")?.textContent || "";
+        const name = card.dataset.originalName || card.querySelector("h3")?.textContent || "";
         const roleLabel = card.querySelector(".delegate-role")?.textContent || "";
         const directKey = card.dataset.memberKey || fallbackLookupKey(name, roleLabel);
         const matchedKey = demoState.memberLookup.get(directKey) ? directKey : demoState.memberLookup.get(fallbackLookupKey(name, roleLabel))?.lookupKey;
@@ -344,11 +376,13 @@
         }
 
         const entry = resolveCardEntry(card);
-        const partyCode = entry?.member?.party || card.querySelector(".delegate-meta")?.textContent?.trim()?.charAt(0) || "";
+        const partyCode = normalizePartyCode(entry?.member?.party || card.querySelector(".delegate-meta")?.textContent?.trim()?.charAt(0) || "");
         const partyTone = partyClass(partyCode);
+        const primaryName = displayMemberName(entry?.member, card.dataset.originalName || card.querySelector("h3")?.textContent || "");
 
         card.classList.remove("party-democrat", "party-republican", "party-independent");
         card.classList.add(partyTone);
+        card.dataset.originalName = primaryName;
 
         const memberName = card.querySelector("h3");
         if (!memberName) {
@@ -383,12 +417,15 @@
           alignmentIndicator.className = "alignment-indicator";
 
           alignmentBlock.append(alignmentScore, alignmentIndicator);
+          const originalParent = memberName.parentNode;
+          const delegateMeta = card.querySelector(".delegate-meta");
           nameGroup.append(partyPill, memberName);
           headingRow.append(nameGroup, alignmentBlock);
-          memberName.parentNode.insertBefore(headingRow, memberName);
+          originalParent.insertBefore(headingRow, delegateMeta || null);
         }
 
-        partyPill.textContent = partyCode || "?";
+        memberName.textContent = primaryName;
+        partyPill.textContent = partyCode ? `(${partyCode})` : "(?)";
         partyPill.className = `party-pill ${partyTone}`;
 
         const descriptor = describeAlignment(entry?.scoreEntry);
