@@ -376,9 +376,49 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 
+.delegate-card {
+  display: grid;
+  gap: 0.85rem;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.delegate-card:hover,
+.delegate-card:focus-visible,
+.delegate-card.is-selected {
+  background: #000000;
+  color: #ffffff;
+  outline: none;
+}
+
+.delegate-card:hover .delegate-meta,
+.delegate-card:hover .delegate-role,
+.delegate-card:hover .delegate-select-label,
+.delegate-card:hover .contact-link,
+.delegate-card:focus-visible .delegate-meta,
+.delegate-card:focus-visible .delegate-role,
+.delegate-card:focus-visible .delegate-select-label,
+.delegate-card:focus-visible .contact-link,
+.delegate-card.is-selected .delegate-meta,
+.delegate-card.is-selected .delegate-role,
+.delegate-card.is-selected .delegate-select-label,
+.delegate-card.is-selected .contact-link,
+.delegate-card.is-selected .muted {
+  color: #ffffff;
+}
+
 .delegate-role,
 .member-role {
   margin-bottom: 0.5rem;
+}
+
+.delegate-select-label {
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
 }
 
 .delegate-meta,
@@ -471,6 +511,95 @@ a {
   color: #000000;
 }
 
+.funding-detail,
+.funding-layout,
+.funding-chart-column,
+.funding-legend {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.funding-layout {
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.funding-candidate-head {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.funding-candidate-head h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  line-height: 1.08;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.funding-chart-shell {
+  position: relative;
+  width: min(100%, 320px);
+}
+
+.funding-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
+.funding-tooltip {
+  position: absolute;
+  min-width: 180px;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  pointer-events: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.funding-tooltip strong,
+.funding-legend-label {
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.funding-tooltip span,
+.funding-legend-meta {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.funding-legend-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+  padding-top: 1rem;
+  border-top: 1px solid #000000;
+}
+
+.funding-legend-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.funding-swatch {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #000000;
+}
+
 @media (max-width: 1120px) {
   .hero,
   .results-layout {
@@ -479,6 +608,10 @@ a {
 
   .controls-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .funding-layout {
+    grid-template-columns: 1fr;
   }
 }
 

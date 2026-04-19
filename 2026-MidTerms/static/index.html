@@ -98,6 +98,34 @@
                 </div>
                 <div id="voteTimeline" class="vote-timeline"></div>
               </article>
+
+              <article class="panel funding-panel">
+                <div class="panel-heading">
+                  <div>
+                    <h2>Funding</h2>
+                    <p id="fundingSource" class="bill-meta">Select a candidate in your delegation to view PAC spending.</p>
+                  </div>
+                </div>
+                <div id="fundingEmpty" class="inline-note">Select a delegation member above to view a PAC spending profile.</div>
+                <div id="fundingDetail" class="funding-detail detail-hidden">
+                  <div class="funding-layout">
+                    <div class="funding-chart-column">
+                      <div class="funding-candidate-head">
+                        <p id="fundingCandidateRole" class="delegate-role"></p>
+                        <h3 id="fundingCandidateName"></h3>
+                        <p id="fundingCandidateMeta" class="delegate-meta"></p>
+                      </div>
+                      <div class="funding-chart-shell">
+                        <canvas id="fundingChart" class="funding-chart" width="320" height="320" aria-label="PAC spending donut chart"></canvas>
+                        <div id="fundingTooltip" class="funding-tooltip detail-hidden"></div>
+                      </div>
+                    </div>
+                    <div class="funding-legend-column">
+                      <div id="fundingLegend" class="funding-legend"></div>
+                    </div>
+                  </div>
+                </div>
+              </article>
             </section>
           </section>
         </section>

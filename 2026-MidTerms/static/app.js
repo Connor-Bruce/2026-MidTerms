@@ -1,7 +1,12 @@
 const state = {
   selectedBill: null,
+  selectedCandidateId: null,
   activeQuery: "",
   lastLocationKey: "",
+  fundingSlices: [],
+  fundingInnerRadius: 0,
+  fundingOuterRadius: 0,
+  fundingHoverIndex: -1,
   stateNameToCode: {},
 };
 
@@ -30,6 +35,16 @@ const elements = {
   billMeta: document.querySelector("#billMeta"),
   delegationCards: document.querySelector("#delegationCards"),
   voteTimeline: document.querySelector("#voteTimeline"),
+  fundingPanel: document.querySelector("#fundingPanel"),
+  fundingSource: document.querySelector("#fundingSource"),
+  fundingEmpty: document.querySelector("#fundingEmpty"),
+  fundingDetail: document.querySelector("#fundingDetail"),
+  fundingCandidateRole: document.querySelector("#fundingCandidateRole"),
+  fundingCandidateName: document.querySelector("#fundingCandidateName"),
+  fundingCandidateMeta: document.querySelector("#fundingCandidateMeta"),
+  fundingChart: document.querySelector("#fundingChart"),
+  fundingLegend: document.querySelector("#fundingLegend"),
+  fundingTooltip: document.querySelector("#fundingTooltip"),
 };
 
 let searchTimer = null;
@@ -55,6 +70,27 @@ function buildQuery(params) {
 
 function setStatus(message) {
   elements.statusMessage.textContent = message;
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function formatCompactCurrency(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value || 0);
+}
+
+function candidateMeta(member) {
+  return `${member.party || "Unknown party"} · ${member.state}${member.district ? `-${member.district}` : ""}`;
 }
 
 function normalizedDistrictValue() {
@@ -262,6 +298,245 @@ async function handleUseMyLocation() {
   }
 }
 
+function hideFundingTooltip() {
+  if (!elements.fundingTooltip) {
+    return;
+  }
+  elements.fundingTooltip.classList.add("detail-hidden");
+}
+
+function resetFundingChart() {
+  state.fundingSlices = [];
+  state.fundingHoverIndex = -1;
+  state.fundingInnerRadius = 0;
+  state.fundingOuterRadius = 0;
+  if (!elements.fundingChart) {
+    return;
+  }
+  const context = elements.fundingChart.getContext("2d");
+  if (!context) {
+    return;
+  }
+  context.clearRect(0, 0, elements.fundingChart.width, elements.fundingChart.height);
+}
+
+function resetFundingPanel(message = "Select a delegation member above to view a PAC spending profile.") {
+  hideFundingTooltip();
+  resetFundingChart();
+  if (elements.fundingEmpty) {
+    elements.fundingEmpty.textContent = message;
+    elements.fundingEmpty.classList.remove("detail-hidden");
+  }
+  if (elements.fundingDetail) {
+    elements.fundingDetail.classList.add("detail-hidden");
+  }
+  if (elements.fundingSource) {
+    elements.fundingSource.textContent = "Select a candidate in your delegation to view PAC spending.";
+  }
+  if (elements.fundingLegend) {
+    elements.fundingLegend.innerHTML = "";
+  }
+}
+
+function fundingTooltipMarkup(segment) {
+  return `
+    <strong>${segment.label}</strong>
+    <span>${formatCurrency(segment.amount)} · ${segment.percent}%</span>
+  `;
+}
+
+function drawFundingChart(payload, hoverIndex = -1) {
+  const canvas = elements.fundingChart;
+  if (!canvas) {
+    return;
+  }
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return;
+  }
+
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const outerRadius = Math.min(width, height) / 2 - 18;
+  const innerRadius = outerRadius * 0.56;
+  const totalAmount = payload.totalAmount || 0;
+
+  state.fundingSlices = [];
+  state.fundingOuterRadius = outerRadius;
+  state.fundingInnerRadius = innerRadius;
+
+  context.clearRect(0, 0, width, height);
+
+  let startAngle = -Math.PI / 2;
+  payload.categories.forEach((segment, index) => {
+    const sliceAngle = (segment.percent / 100) * Math.PI * 2;
+    const endAngle = startAngle + sliceAngle;
+
+    context.beginPath();
+    context.moveTo(centerX, centerY);
+    context.arc(centerX, centerY, outerRadius, startAngle, endAngle);
+    context.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+    context.closePath();
+    context.fillStyle = segment.color;
+    context.fill();
+    context.lineWidth = hoverIndex === index ? 2 : 1;
+    context.strokeStyle = "#000000";
+    context.stroke();
+
+    state.fundingSlices.push({
+      ...segment,
+      startAngle,
+      endAngle,
+    });
+    startAngle = endAngle;
+  });
+
+  context.beginPath();
+  context.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+  context.fillStyle = "#ffffff";
+  context.fill();
+  context.lineWidth = 1;
+  context.strokeStyle = "#000000";
+  context.stroke();
+
+  context.fillStyle = "#000000";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = '900 13px "SFMono-Regular", Menlo, Consolas, monospace';
+  context.fillText("PAC MIX", centerX, centerY - 14);
+  context.font = '900 24px "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif';
+  context.fillText(formatCompactCurrency(totalAmount), centerX, centerY + 16);
+}
+
+function fundingSliceAtEvent(event) {
+  const canvas = elements.fundingChart;
+  if (!canvas) {
+    return -1;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
+  const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const deltaX = x - centerX;
+  const deltaY = y - centerY;
+  const distance = Math.sqrt((deltaX ** 2) + (deltaY ** 2));
+
+  if (distance < state.fundingInnerRadius || distance > state.fundingOuterRadius) {
+    return -1;
+  }
+
+  let angle = Math.atan2(deltaY, deltaX);
+  if (angle < -Math.PI / 2) {
+    angle += Math.PI * 2;
+  }
+
+  return state.fundingSlices.findIndex((segment) => angle >= segment.startAngle && angle <= segment.endAngle);
+}
+
+function updateFundingTooltip(segment, event) {
+  if (!elements.fundingTooltip || !elements.fundingChart) {
+    return;
+  }
+
+  const rect = elements.fundingChart.getBoundingClientRect();
+  const left = event.clientX - rect.left + 12;
+  const top = event.clientY - rect.top + 12;
+
+  elements.fundingTooltip.innerHTML = fundingTooltipMarkup(segment);
+  elements.fundingTooltip.style.left = `${left}px`;
+  elements.fundingTooltip.style.top = `${top}px`;
+  elements.fundingTooltip.classList.remove("detail-hidden");
+}
+
+function renderFundingLegend(payload) {
+  if (!elements.fundingLegend) {
+    return;
+  }
+
+  elements.fundingLegend.innerHTML = payload.categories
+    .map(
+      (segment) => `
+        <div class="funding-legend-item">
+          <span class="funding-swatch" style="background:${segment.color};"></span>
+          <div>
+            <p class="funding-legend-label">${segment.label}</p>
+            <p class="funding-legend-meta">${segment.percent}% · ${formatCurrency(segment.amount)}</p>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderFunding(payload, member) {
+  if (elements.fundingEmpty) {
+    elements.fundingEmpty.classList.add("detail-hidden");
+  }
+  if (elements.fundingDetail) {
+    elements.fundingDetail.classList.remove("detail-hidden");
+  }
+  if (elements.fundingSource) {
+    const sourceTail = payload.openSecretsReady
+      ? "OpenSecrets API key detected. Mock profile shown until the live endpoint is wired."
+      : "Mocked prototype data shaped for a future OpenSecrets integration.";
+    elements.fundingSource.textContent = `${payload.sourceLabel} · ${sourceTail}`;
+  }
+  elements.fundingCandidateRole.textContent = member.roleLabel || "Candidate";
+  elements.fundingCandidateName.textContent = member.displayName || member.listName || payload.displayName;
+  elements.fundingCandidateMeta.textContent = `${candidateMeta(member)} · Total ${formatCompactCurrency(payload.totalAmount)}`;
+
+  drawFundingChart(payload);
+  renderFundingLegend(payload);
+}
+
+function wireFundingChartInteractions(payload) {
+  if (!elements.fundingChart) {
+    return;
+  }
+
+  elements.fundingChart.onmousemove = (event) => {
+    const hoverIndex = fundingSliceAtEvent(event);
+    if (hoverIndex === -1) {
+      if (state.fundingHoverIndex !== -1) {
+        state.fundingHoverIndex = -1;
+        drawFundingChart(payload);
+      }
+      hideFundingTooltip();
+      return;
+    }
+
+    if (hoverIndex !== state.fundingHoverIndex) {
+      state.fundingHoverIndex = hoverIndex;
+      drawFundingChart(payload, hoverIndex);
+    }
+    updateFundingTooltip(payload.categories[hoverIndex], event);
+  };
+
+  elements.fundingChart.onmouseleave = () => {
+    state.fundingHoverIndex = -1;
+    drawFundingChart(payload);
+    hideFundingTooltip();
+  };
+}
+
+function syncSelectedDelegationCard() {
+  const cards = elements.delegationCards.querySelectorAll(".delegate-card");
+  cards.forEach((card) => {
+    const selected = card.dataset.candidateId === state.selectedCandidateId;
+    card.classList.toggle("is-selected", selected);
+    card.setAttribute("aria-pressed", selected ? "true" : "false");
+    const label = card.querySelector(".delegate-select-label");
+    if (label) {
+      label.textContent = selected ? "Funding selected" : "Select for funding";
+    }
+  });
+}
+
 function renderSearchResults(results) {
   elements.searchResults.innerHTML = "";
   elements.matchCount.textContent = `${results.length} result${results.length === 1 ? "" : "s"}`;
@@ -329,10 +604,41 @@ function renderSearchResults(results) {
   appendSection(featuredResults.length && standardResults.length ? "MATCHES" : "", standardResults);
 }
 
+async function loadCandidateFunding(member, options = {}) {
+  const candidateId = member?.bioguideId;
+  if (!candidateId) {
+    resetFundingPanel("Funding data is unavailable because this candidate is missing an id.");
+    return;
+  }
+
+  state.selectedCandidateId = candidateId;
+  syncSelectedDelegationCard();
+
+  if (!options.quiet) {
+    setStatus(`Loading PAC spending for ${member.displayName || member.listName}...`);
+  }
+
+  try {
+    const payload = await fetchJson(`/api/candidate/funding/${encodeURIComponent(candidateId)}`);
+    renderFunding(payload, member);
+    wireFundingChartInteractions(payload);
+    if (!options.quiet) {
+      setStatus(`Showing PAC spending for ${member.displayName || member.listName}.`);
+    }
+  } catch (error) {
+    resetFundingPanel(error.message);
+    if (!options.quiet) {
+      setStatus(error.message);
+    }
+  }
+}
+
 function renderDelegation(representatives) {
   elements.delegationCards.innerHTML = "";
 
   if (!representatives.length) {
+    state.selectedCandidateId = null;
+    resetFundingPanel("No delegation members are available for PAC spending data.");
     const note = document.createElement("p");
     note.className = "inline-note";
     note.textContent = "No delegation members were returned for that state and district.";
@@ -340,22 +646,55 @@ function renderDelegation(representatives) {
     return;
   }
 
+  let selectedMember = null;
   representatives.forEach((member) => {
     const card = document.createElement("article");
     card.className = "delegate-card";
+    card.dataset.candidateId = member.bioguideId || "";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     const phoneMarkup = member.phone ? `<a href="tel:${member.phone}" class="contact-link">${member.phone}</a>` : "<span class='muted'>Phone unavailable</span>";
     const siteMarkup = member.website ? `<a href="${member.website}" target="_blank" rel="noreferrer" class="contact-link">Website</a>` : "<span class='muted'>Website unavailable</span>";
     card.innerHTML = `
       <p class="delegate-role">${member.roleLabel}</p>
       <h3>${member.displayName || member.listName}</h3>
-      <p class="delegate-meta">${member.party || "Unknown party"} · ${member.state}${member.district ? `-${member.district}` : ""}</p>
+      <p class="delegate-meta">${candidateMeta(member)}</p>
+      <p class="delegate-select-label">${member.bioguideId === state.selectedCandidateId ? "Funding selected" : "Select for funding"}</p>
       <div class="contact-row">
         ${phoneMarkup}
         ${siteMarkup}
       </div>
     `;
+
+    card.addEventListener("click", () => {
+      void loadCandidateFunding(member);
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        void loadCandidateFunding(member);
+      }
+    });
+    card.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+    });
+
+    if (member.bioguideId === state.selectedCandidateId) {
+      selectedMember = member;
+    }
     elements.delegationCards.append(card);
   });
+
+  syncSelectedDelegationCard();
+
+  if (selectedMember) {
+    void loadCandidateFunding(selectedMember, { quiet: true });
+  } else {
+    state.selectedCandidateId = null;
+    resetFundingPanel("Select a delegation member above to view a PAC spending profile.");
+  }
 }
 
 function voteTone(vote) {
@@ -553,6 +892,7 @@ function wireEvents() {
 
   elements.clearButton.addEventListener("click", () => {
     state.selectedBill = null;
+    state.selectedCandidateId = null;
     state.activeQuery = "";
     state.lastLocationKey = "";
     elements.billSearch.value = "";
@@ -560,6 +900,7 @@ function wireEvents() {
     elements.billDetail.classList.add("detail-hidden");
     elements.emptyState.classList.remove("detail-hidden");
     setEmptyStateCopy(DEFAULT_EMPTY_STATE_TITLE, DEFAULT_EMPTY_STATE_BODY);
+    resetFundingPanel();
     runSearch();
   });
 

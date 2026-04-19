@@ -33,6 +33,7 @@ CURRENT_CONGRESS = 119
 SUPPORTED_CONGRESSES = (119, 118)
 SUPPORTED_YEARS = {"2023", "2024", "2025", "2026"}
 CONGRESS_API_KEY = os.environ.get("CONGRESS_API_KEY", "").strip()
+OPENSECRETS_API_KEY = os.environ.get("OPENSECRETS_API_KEY", "").strip()
 USER_AGENT = "CivicVotesPrototype/1.0"
 CACHE_TTL_SECONDS = 60 * 30
 
@@ -81,6 +82,63 @@ FEATURED_BILL_SPECS = (
     },
 )
 FEATURED_BILL_LIMIT = 5
+FUNDING_SEGMENTS = (
+    {
+        "key": "energy",
+        "label": "Big Oil / Energy PACs",
+        "percent": 37,
+        "color": "#000000",
+    },
+    {
+        "key": "aipac",
+        "label": "AIPAC / Pro-Israel Groups",
+        "percent": 20,
+        "color": "#173a8f",
+    },
+    {
+        "key": "gun",
+        "label": "Gun Lobby / NRA",
+        "percent": 16,
+        "color": "#8a1c1c",
+    },
+    {
+        "key": "pharma",
+        "label": "Pharmaceutical Industry",
+        "percent": 11,
+        "color": "#b5961a",
+    },
+    {
+        "key": "smaller",
+        "label": "Combined Smaller PACs",
+        "percent": 12,
+        "color": "#6d6d6d",
+    },
+    {
+        "key": "other",
+        "label": "Other",
+        "percent": 4,
+        "color": "#d9d9d9",
+    },
+)
+MOCK_FUNDING_TOTALS = {
+    "S001150": 5_760_000,
+    "S001231": 4_980_000,
+    "P000197": 6_420_000,
+}
+MOCK_FUNDING_CANDIDATES = {
+    "S001150": {
+        "displayName": "Adam Schiff",
+        "sourceLabel": "Mock OpenSecrets Industry Mix",
+    },
+    "S001231": {
+        "displayName": "Lateefah Simon",
+        "sourceLabel": "Mock OpenSecrets Industry Mix",
+    },
+    "P000197": {
+        "displayName": "Alex Padilla",
+        "sourceLabel": "Mock OpenSecrets Industry Mix",
+    },
+}
 
 STATE_OPTIONS = [
     ("AL", "Alabama"),
@@ -495,6 +553,60 @@ def load_featured_bill_catalog() -> list[dict[str, Any]]:
 
 def featured_laws(limit: int = FEATURED_BILL_LIMIT) -> list[dict[str, Any]]:
     return [dict(bill) for bill in load_featured_bill_catalog()[:limit]]
+
+
+def mock_funding_total(candidate_id: str) -> int:
+    normalized = candidate_id.upper()
+    if normalized in MOCK_FUNDING_TOTALS:
+        return MOCK_FUNDING_TOTALS[normalized]
+
+    seed = sum(ord(char) for char in normalized)
+    return 3_500_000 + (seed % 35) * 125_000
+
+
+def build_mock_candidate_funding(candidate_id: str) -> dict[str, Any]:
+    normalized = candidate_id.upper()
+    total_amount = mock_funding_total(normalized)
+    segments = []
+    allocated = 0
+
+    for index, segment in enumerate(FUNDING_SEGMENTS):
+        if index == len(FUNDING_SEGMENTS) - 1:
+            amount = total_amount - allocated
+        else:
+            amount = round(total_amount * (segment["percent"] / 100))
+            allocated += amount
+
+        segments.append(
+            {
+                **segment,
+                "amount": amount,
+            }
+        )
+
+    candidate_info = MOCK_FUNDING_CANDIDATES.get(normalized, {})
+    return {
+        "candidateId": normalized,
+        "displayName": candidate_info.get("displayName") or normalized,
+        "totalAmount": total_amount,
+        "sourceLabel": candidate_info.get("sourceLabel") or "Mock OpenSecrets Industry Mix",
+        "sourceMode": "mock",
+        "openSecretsReady": bool(OPENSECRETS_API_KEY),
+        "categories": segments,
+        "updatedAt": "2026-04-18",
+    }
+
+
+def build_candidate_funding_payload(candidate_id: str) -> dict[str, Any]:
+    normalized = candidate_id.strip().upper()
+    if not normalized:
+        raise ValueError("Candidate id is required.")
+
+    # Integration point:
+    # If you later wire the OpenSecrets candidate/industry endpoints, this
+    # function can swap in live percentages while keeping the frontend payload
+    # shape exactly the same.
+    return build_mock_candidate_funding(normalized)
 
 
 @lru_cache(maxsize=1)
@@ -1124,6 +1236,14 @@ def api_bill_votes() -> Any:
         district = optional_query_value("district")
         payload = build_bill_vote_payload(int(congress_value) if congress_value else None, bill_type, bill_number, state, district)
         return jsonify(payload)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
+
+
+@app.get("/api/candidate/funding/<candidate_id>")
+def api_candidate_funding(candidate_id: str) -> Any:
+    try:
+        return jsonify(build_candidate_funding_payload(candidate_id))
     except Exception as exc:  # noqa: BLE001
         return jsonify({"error": str(exc)}), error_status(exc)
 
