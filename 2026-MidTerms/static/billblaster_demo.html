@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BillBlaster x V1 Demo</title>
-    <link rel="stylesheet" href="/billblaster.css?v=20260419" />
+    <link rel="stylesheet" href="/billblaster.css?v=20260419c" />
   </head>
   <body class="billblaster-demo">
     <div class="demo-banner">BILLBLASTER x V1</div>
@@ -152,5 +152,445 @@
     </div>
 
     <script src="/app.js" type="module"></script>
+    <script type="module">
+      const DEMO_ALIGNMENT_STANCES = new Map([
+        ["118|hr|2882", "NAY"],
+        ["118|hr|8070", "YEA"],
+        ["118|hr|7024", "YEA"],
+        ["117|hr|3684", "NAY"],
+        ["117|hr|4521", "YEA"],
+      ]);
+
+      const demoState = {
+        cache: new Map(),
+        currentLocationKey: "",
+        latestRequestId: 0,
+        memberLookup: new Map(),
+        scoreLookup: new Map(),
+      };
+
+      const demoElements = {
+        stateSelect: document.querySelector("#stateSelect"),
+        districtInput: document.querySelector("#districtInput"),
+        districtSelect: document.querySelector("#districtSelect"),
+        zipInput: document.querySelector("#zipInput"),
+        useLocationButton: document.querySelector("#useLocationButton"),
+        representativesCards: document.querySelector("#representativesCards"),
+        delegationCards: document.querySelector("#delegationCards"),
+        representativesMeta: document.querySelector("#representativesMeta"),
+      };
+
+      let refreshTimer = null;
+
+      function normalizeText(value) {
+        return String(value || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      }
+
+      function normalizedDistrictValue() {
+        const digits = (demoElements.districtInput?.value || "").replace(/\D/g, "");
+        return digits ? String(Number.parseInt(digits, 10)) : "";
+      }
+
+      function currentLocationKey() {
+        const stateCode = demoElements.stateSelect?.value || "";
+        const district = normalizedDistrictValue();
+        return stateCode && district ? `${stateCode}:${district}` : "";
+      }
+
+      async function fetchJson(url) {
+        const response = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        const text = await response.text();
+        const payload = text ? JSON.parse(text) : {};
+        if (!response.ok) {
+          throw new Error(payload.error || "Could not load BillBlaster scorecard data.");
+        }
+        return payload;
+      }
+
+      function buildQuery(params) {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            query.set(key, value);
+          }
+        });
+        return query.toString();
+      }
+
+      function normalizeVotePosition(value) {
+        const lowered = String(value || "").toLowerCase();
+        if (lowered.includes("yea") || lowered.includes("aye") || lowered === "yes") {
+          return "YEA";
+        }
+        if (lowered.includes("nay") || lowered.includes("no")) {
+          return "NAY";
+        }
+        return "";
+      }
+
+      function billKey(bill) {
+        return `${bill.congress}|${String(bill.billType || "").toLowerCase()}|${bill.billNumber}`;
+      }
+
+      function memberLookupKey(member) {
+        return member.bioguideId
+          || `${normalizeText(member.displayName || member.listName || member.name)}|${normalizeText(member.roleLabel || member.chamber || "member")}`;
+      }
+
+      function fallbackLookupKey(name, roleLabel) {
+        return `${normalizeText(name)}|${normalizeText(roleLabel || "member")}`;
+      }
+
+      function partyClass(partyCode) {
+        if (partyCode === "D") {
+          return "party-democrat";
+        }
+        if (partyCode === "R") {
+          return "party-republican";
+        }
+        return "party-independent";
+      }
+
+      function fallbackAlignmentScore(partyCode) {
+        if (partyCode === "R") {
+          return 88;
+        }
+        if (partyCode === "D") {
+          return 12;
+        }
+        return 50;
+      }
+
+      function describeAlignment(entry) {
+        if (!entry) {
+          return {
+            scoreText: "TRACKING",
+            scoreClass: "alignment-score-modelled",
+            indicatorText: "NO SCORE",
+            indicatorClass: "alignment-indicator-modelled",
+          };
+        }
+
+        if (entry.modelled) {
+          return {
+            scoreText: `${entry.score}% ALIGNMENT`,
+            scoreClass: entry.score < 20 ? "alignment-score-breaking" : "alignment-score-modelled",
+            indicatorText: "MODELED INDEX",
+            indicatorClass: entry.score < 20 ? "alignment-indicator-breaking" : "alignment-indicator-modelled",
+          };
+        }
+
+        if (entry.score < 20) {
+          return {
+            scoreText: `${entry.score}% ALIGNMENT`,
+            scoreClass: "alignment-score-breaking",
+            indicatorText: "BREAKING RANKS",
+            indicatorClass: "alignment-indicator-breaking",
+          };
+        }
+
+        if (entry.score >= 80) {
+          return {
+            scoreText: `${entry.score}% ALIGNMENT`,
+            scoreClass: "alignment-score-strong",
+            indicatorText: "IN ALIGNMENT",
+            indicatorClass: "alignment-indicator-in",
+          };
+        }
+
+        return {
+          scoreText: `${entry.score}% ALIGNMENT`,
+          scoreClass: "alignment-score-mixed",
+          indicatorText: "MIXED RECORD",
+          indicatorClass: "alignment-indicator-mixed",
+        };
+      }
+
+      function updateFinanceLabel(card) {
+        const financeLink = Array.from(card.querySelectorAll(".contact-link")).find((link) =>
+          /opensecrets/i.test(link.getAttribute("aria-label") || "")
+          || /opensecrets/i.test(link.textContent || "")
+        );
+        if (financeLink) {
+          financeLink.textContent = "Finance Data";
+        }
+      }
+
+      function resolveCardEntry(card) {
+        const name = card.querySelector("h3")?.textContent || "";
+        const roleLabel = card.querySelector(".delegate-role")?.textContent || "";
+        const directKey = card.dataset.memberKey || fallbackLookupKey(name, roleLabel);
+        const matchedKey = demoState.memberLookup.get(directKey) ? directKey : demoState.memberLookup.get(fallbackLookupKey(name, roleLabel))?.lookupKey;
+        return matchedKey ? demoState.memberLookup.get(matchedKey) : demoState.memberLookup.get(fallbackLookupKey(name, roleLabel));
+      }
+
+      function enhanceRepresentativeCard(card) {
+        if (!card || card.dataset.billblasterEnhanced === "true") {
+          if (card) {
+            updateFinanceLabel(card);
+          }
+        }
+
+        if (!card) {
+          return;
+        }
+
+        const entry = resolveCardEntry(card);
+        const partyCode = entry?.member?.party || card.querySelector(".delegate-meta")?.textContent?.trim()?.charAt(0) || "";
+        const partyTone = partyClass(partyCode);
+
+        card.classList.remove("party-democrat", "party-republican", "party-independent");
+        card.classList.add(partyTone);
+
+        const memberName = card.querySelector("h3");
+        if (!memberName) {
+          return;
+        }
+
+        let headingRow = card.querySelector(".delegate-heading-row");
+        let nameGroup = card.querySelector(".delegate-name-group");
+        let partyPill = card.querySelector(".party-pill");
+        let alignmentBlock = card.querySelector(".alignment-block");
+        let alignmentScore = card.querySelector(".alignment-score");
+        let alignmentIndicator = card.querySelector(".alignment-indicator");
+
+        if (!headingRow) {
+          headingRow = document.createElement("div");
+          headingRow.className = "delegate-heading-row";
+
+          nameGroup = document.createElement("div");
+          nameGroup.className = "delegate-name-group";
+
+          partyPill = document.createElement("span");
+          partyPill.className = "party-pill";
+          partyPill.setAttribute("aria-hidden", "true");
+
+          alignmentBlock = document.createElement("div");
+          alignmentBlock.className = "alignment-block";
+
+          alignmentScore = document.createElement("p");
+          alignmentScore.className = "alignment-score";
+
+          alignmentIndicator = document.createElement("p");
+          alignmentIndicator.className = "alignment-indicator";
+
+          alignmentBlock.append(alignmentScore, alignmentIndicator);
+          nameGroup.append(partyPill, memberName);
+          headingRow.append(nameGroup, alignmentBlock);
+          memberName.parentNode.insertBefore(headingRow, memberName);
+        }
+
+        partyPill.textContent = partyCode || "?";
+        partyPill.className = `party-pill ${partyTone}`;
+
+        const descriptor = describeAlignment(entry?.scoreEntry);
+        alignmentScore.textContent = descriptor.scoreText;
+        alignmentScore.className = `alignment-score ${descriptor.scoreClass}`;
+        alignmentIndicator.textContent = descriptor.indicatorText;
+        alignmentIndicator.className = `alignment-indicator ${descriptor.indicatorClass}`;
+
+        if (entry?.lookupKey) {
+          card.dataset.memberKey = entry.lookupKey;
+        }
+
+        updateFinanceLabel(card);
+        card.dataset.billblasterEnhanced = "true";
+      }
+
+      function enhanceAllRepresentativeCards() {
+        document.querySelectorAll(".delegate-card").forEach((card) => {
+          enhanceRepresentativeCard(card);
+        });
+      }
+
+      async function loadTrackedBills() {
+        if (demoState.trackedBillsPromise) {
+          return demoState.trackedBillsPromise;
+        }
+
+        demoState.trackedBillsPromise = fetchJson("/api/search-bills?featured=1")
+          .then((payload) => (payload.results || []).filter((bill) => DEMO_ALIGNMENT_STANCES.has(billKey(bill))));
+        return demoState.trackedBillsPromise;
+      }
+
+      async function refreshAlignmentScorecard(force = false) {
+        const locationKey = currentLocationKey();
+        if (!locationKey) {
+          demoState.currentLocationKey = "";
+          demoState.memberLookup = new Map();
+          demoState.scoreLookup = new Map();
+          enhanceAllRepresentativeCards();
+          return;
+        }
+
+        if (!force && locationKey === demoState.currentLocationKey && demoState.scoreLookup.size) {
+          enhanceAllRepresentativeCards();
+          return;
+        }
+
+        const [stateCode, district] = locationKey.split(":");
+        const requestId = ++demoState.latestRequestId;
+
+        try {
+          const repsPayload = await fetchJson(`/api/representatives?${buildQuery({ state: stateCode, district })}`);
+          const trackedBills = await loadTrackedBills();
+
+          if (requestId !== demoState.latestRequestId) {
+            return;
+          }
+
+          const tallyByKey = new Map();
+          const memberLookup = new Map();
+
+          (repsPayload.representatives || []).forEach((member) => {
+            const lookupKey = memberLookupKey(member);
+            const fallbackKey = fallbackLookupKey(member.displayName || member.listName, member.roleLabel);
+            tallyByKey.set(lookupKey, {
+              member,
+              aligned: 0,
+              total: 0,
+            });
+            memberLookup.set(lookupKey, { lookupKey, member });
+            memberLookup.set(fallbackKey, { lookupKey, member });
+          });
+
+          await Promise.all(
+            trackedBills.map(async (bill) => {
+              try {
+                const payload = await fetchJson(`/api/bill-votes?${buildQuery({
+                  congress: bill.congress,
+                  billType: bill.billType,
+                  billNumber: bill.billNumber,
+                  state: stateCode,
+                  district,
+                })}`);
+
+                (payload.votes || []).forEach((vote) => {
+                  (vote.members || []).forEach((memberVote) => {
+                    const normalizedVote = normalizeVotePosition(memberVote.position || memberVote.vote);
+                    if (!normalizedVote) {
+                      return;
+                    }
+
+                    const lookupCandidate =
+                      memberLookup.get(memberVote.memberId)
+                      || memberLookup.get(fallbackLookupKey(memberVote.name, memberVote.roleLabel));
+
+                    if (!lookupCandidate) {
+                      return;
+                    }
+
+                    const tally = tallyByKey.get(lookupCandidate.lookupKey);
+                    if (!tally) {
+                      return;
+                    }
+
+                    tally.total += 1;
+                    if (normalizedVote === DEMO_ALIGNMENT_STANCES.get(billKey(bill))) {
+                      tally.aligned += 1;
+                    }
+                  });
+                });
+              } catch (error) {
+                console.warn("BillBlaster demo scorecard skipped one tracked bill.", error);
+              }
+            })
+          );
+
+          if (requestId !== demoState.latestRequestId) {
+            return;
+          }
+
+          const scoreLookup = new Map();
+          tallyByKey.forEach((tally, lookupKey) => {
+            const actualScore = tally.total
+              ? Math.round((tally.aligned / tally.total) * 100)
+              : null;
+            const scoreEntry = actualScore === null
+              ? {
+                score: fallbackAlignmentScore(tally.member.party),
+                modelled: true,
+              }
+              : {
+                score: actualScore,
+                modelled: false,
+              };
+
+            const entry = {
+              lookupKey,
+              member: tally.member,
+              scoreEntry,
+            };
+
+            scoreLookup.set(lookupKey, entry);
+            scoreLookup.set(fallbackLookupKey(tally.member.displayName || tally.member.listName, tally.member.roleLabel), entry);
+            if (tally.member.bioguideId) {
+              scoreLookup.set(tally.member.bioguideId, entry);
+            }
+          });
+
+          demoState.currentLocationKey = locationKey;
+          demoState.memberLookup = scoreLookup;
+          demoState.scoreLookup = scoreLookup;
+
+          if (demoElements.representativesMeta && demoElements.representativesMeta.textContent) {
+            const baseText = demoElements.representativesMeta.textContent.replace(/\s+·\s+2026 alignment scorecard active\.$/i, "");
+            demoElements.representativesMeta.textContent = `${baseText} · 2026 Alignment Scorecard active.`;
+          }
+
+          enhanceAllRepresentativeCards();
+        } catch (error) {
+          console.warn("BillBlaster demo scorecard could not be refreshed.", error);
+        }
+      }
+
+      function scheduleAlignmentRefresh(force = false) {
+        window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(() => {
+          refreshAlignmentScorecard(force);
+        }, 220);
+      }
+
+      const cardObserver = new MutationObserver(() => {
+        enhanceAllRepresentativeCards();
+        scheduleAlignmentRefresh(false);
+      });
+
+      if (demoElements.representativesCards) {
+        cardObserver.observe(demoElements.representativesCards, {
+          childList: true,
+        });
+      }
+
+      if (demoElements.delegationCards) {
+        cardObserver.observe(demoElements.delegationCards, {
+          childList: true,
+        });
+      }
+
+      ["change", "input"].forEach((eventName) => {
+        demoElements.stateSelect?.addEventListener(eventName, () => scheduleAlignmentRefresh(true));
+        demoElements.districtInput?.addEventListener(eventName, () => scheduleAlignmentRefresh(true));
+        demoElements.districtSelect?.addEventListener(eventName, () => scheduleAlignmentRefresh(true));
+        demoElements.zipInput?.addEventListener(eventName, () => scheduleAlignmentRefresh(true));
+      });
+
+      demoElements.useLocationButton?.addEventListener("click", () => {
+        window.setTimeout(() => scheduleAlignmentRefresh(true), 400);
+      });
+
+      window.setTimeout(() => {
+        enhanceAllRepresentativeCards();
+        scheduleAlignmentRefresh(false);
+      }, 0);
+    </script>
   </body>
 </html>
