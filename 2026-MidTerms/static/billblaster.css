@@ -1,15 +1,33 @@
 @import url("/style.css?v=20260419");
 
 :root {
-  --billblaster-red: #c1121f;
-  --billblaster-blue: #133c8b;
+  --billblaster-red: #ff0000;
   --billblaster-black: #000000;
   --billblaster-white: #ffffff;
+  --billblaster-grey: #7a7a7a;
+  --billblaster-matte-grey: #2d2d2d;
+  --billblaster-border: #ffffff;
 }
 
+html:has(body.billblaster-demo),
 body.billblaster-demo {
-  background: var(--billblaster-white);
-  color: var(--billblaster-black);
+  background: var(--billblaster-black);
+  color: var(--billblaster-white);
+}
+
+body.billblaster-demo,
+.billblaster-demo button,
+.billblaster-demo input,
+.billblaster-demo select,
+.billblaster-demo textarea {
+  font-family: var(--mono-stack);
+  color: var(--billblaster-white);
+  text-transform: uppercase;
+}
+
+.billblaster-demo * {
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .billblaster-demo .page-shell {
@@ -19,8 +37,9 @@ body.billblaster-demo {
 .demo-banner {
   width: 100%;
   padding: 0.9rem 2rem;
-  background: var(--billblaster-blue);
+  background: var(--billblaster-black);
   color: var(--billblaster-white);
+  border-bottom: 1px solid var(--billblaster-border);
   font-family: var(--mono-stack);
   font-size: 0.78rem;
   font-weight: 800;
@@ -40,7 +59,7 @@ body.billblaster-demo {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: stretch;
-  border: 1px solid var(--billblaster-black);
+  border: 1px solid var(--billblaster-border);
   background: var(--billblaster-red);
   color: var(--billblaster-white);
 }
@@ -54,8 +73,8 @@ body.billblaster-demo {
 }
 
 .billblaster-logo span + span {
-  border-left: 1px solid var(--billblaster-black);
-  background: var(--billblaster-blue);
+  border-left: 1px solid var(--billblaster-border);
+  background: var(--billblaster-black);
 }
 
 .billblaster-demo .hero h1,
@@ -63,8 +82,13 @@ body.billblaster-demo {
 .billblaster-demo .empty-panel h2,
 .billblaster-demo .vote-card h3,
 .billblaster-demo .delegate-card h3,
-.billblaster-demo .result-card strong {
+.billblaster-demo .result-card strong,
+.billblaster-demo .info-copy-block h3,
+.billblaster-demo .member-name {
+  font-family: var(--mono-stack);
+  color: var(--billblaster-white);
   letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .billblaster-demo .eyebrow,
@@ -75,8 +99,37 @@ body.billblaster-demo {
 .billblaster-demo .vote-chamber,
 .billblaster-demo .vote-roll,
 .billblaster-demo .delegate-role,
-.billblaster-demo .member-role {
-  color: var(--billblaster-blue);
+.billblaster-demo .member-role,
+.billblaster-demo .field span,
+.billblaster-demo .pill,
+.billblaster-demo .law-badge {
+  color: var(--billblaster-grey);
+  font-family: var(--mono-stack);
+}
+
+.billblaster-demo .subcopy,
+.billblaster-demo .status-message,
+.billblaster-demo .result-meta,
+.billblaster-demo .delegate-meta,
+.billblaster-demo .vote-meta,
+.billblaster-demo .vote-description,
+.billblaster-demo .bill-meta,
+.billblaster-demo .muted,
+.billblaster-demo .hero-list,
+.billblaster-demo .contact-link,
+.billblaster-demo .source-link,
+.billblaster-demo .info-copy,
+.billblaster-demo .member-note,
+.billblaster-demo .empty-panel p,
+.billblaster-demo .search-empty,
+.billblaster-demo .inline-note {
+  color: var(--billblaster-white);
+  font-family: var(--mono-stack);
+}
+
+.billblaster-demo .member-note {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .billblaster-demo .hero-copy,
@@ -86,82 +139,104 @@ body.billblaster-demo {
 .billblaster-demo .vote-card,
 .billblaster-demo .result-card,
 .billblaster-demo .search-empty,
-.billblaster-demo .inline-note {
-  border-color: var(--billblaster-black);
+.billblaster-demo .inline-note,
+.billblaster-demo .info-action-link {
+  background: var(--billblaster-black);
+  color: var(--billblaster-white);
+  border: 1px solid var(--billblaster-border);
+}
+
+.billblaster-demo .field input,
+.billblaster-demo .field select,
+.billblaster-demo .ghost-button,
+.billblaster-demo .location-button {
+  width: 100%;
+  min-height: 4.25rem;
+  padding: 0 1.2rem;
+  border: 1px solid var(--billblaster-border);
+  border-radius: 0;
+  outline: none;
+  background: var(--billblaster-black);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .field input::placeholder {
+  color: var(--billblaster-grey);
+  opacity: 1;
+}
+
+.billblaster-demo .field input:focus,
+.billblaster-demo .field select:focus {
+  outline: 1px solid var(--billblaster-border);
+  outline-offset: 0;
 }
 
 .billblaster-demo .status-message {
-  color: var(--billblaster-blue);
-  opacity: 0.88;
+  color: var(--billblaster-grey);
+  opacity: 0.92;
 }
 
-.billblaster-demo .location-button {
-  background: var(--billblaster-red);
+.billblaster-demo .location-button,
+.billblaster-demo .ghost-button,
+.billblaster-demo .ghost-button-secondary {
+  background: var(--billblaster-black);
   color: var(--billblaster-white);
+  border-color: var(--billblaster-border);
 }
 
 .billblaster-demo .location-button:hover,
-.billblaster-demo .location-button:focus-visible {
-  background: var(--billblaster-blue);
-  color: var(--billblaster-white);
-}
-
-.billblaster-demo .ghost-button {
-  background: var(--billblaster-blue);
-  color: var(--billblaster-white);
-}
-
+.billblaster-demo .location-button:focus-visible,
 .billblaster-demo .ghost-button:hover,
-.billblaster-demo .ghost-button:focus-visible {
-  background: var(--billblaster-white);
-  color: var(--billblaster-black);
-}
-
-.billblaster-demo .ghost-button-secondary {
-  background: var(--billblaster-white);
-  color: var(--billblaster-black);
-  border-color: var(--billblaster-black);
-}
-
+.billblaster-demo .ghost-button:focus-visible,
 .billblaster-demo .ghost-button-secondary:hover,
 .billblaster-demo .ghost-button-secondary:focus-visible {
-  background: var(--billblaster-blue);
-  color: var(--billblaster-white);
+  background: var(--billblaster-white);
+  color: var(--billblaster-black);
 }
 
 .billblaster-demo .pill,
 .billblaster-demo .law-badge,
 .billblaster-demo .featured-tag,
 .billblaster-demo .vote-badge {
-  border-color: var(--billblaster-black);
+  border: 1px solid var(--billblaster-border);
+  background: var(--billblaster-black);
+  color: var(--billblaster-white);
 }
 
 .billblaster-demo .featured-tag,
-.billblaster-demo .law-badge,
-.billblaster-demo .vote-yes {
-  background: var(--billblaster-red);
+.billblaster-demo .law-badge {
+  color: var(--billblaster-red);
+}
+
+.billblaster-demo .vote-yes,
+.billblaster-demo .vote-present,
+.billblaster-demo .vote-neutral {
+  background: var(--billblaster-matte-grey);
   color: var(--billblaster-white);
+  border-color: var(--billblaster-border);
 }
 
 .billblaster-demo .vote-no {
-  background: var(--billblaster-blue);
+  background: var(--billblaster-red);
   color: var(--billblaster-white);
+  border-color: var(--billblaster-red);
 }
 
-.billblaster-demo .contact-link {
-  color: var(--billblaster-blue);
+.billblaster-demo .contact-link,
+.billblaster-demo .source-link {
+  color: var(--billblaster-white);
 }
 
 .billblaster-demo .contact-link:hover,
 .billblaster-demo .contact-link:focus-visible,
 .billblaster-demo .source-link:hover,
 .billblaster-demo .source-link:focus-visible {
-  color: var(--billblaster-black);
+  color: var(--billblaster-grey);
 }
 
 .billblaster-demo .result-card:hover,
 .billblaster-demo .result-card:focus-visible {
-  background: var(--billblaster-blue);
+  background: var(--billblaster-matte-grey);
   color: var(--billblaster-white);
 }
 
@@ -172,6 +247,43 @@ body.billblaster-demo {
 .billblaster-demo .result-card:focus-visible .result-meta,
 .billblaster-demo .result-card:focus-visible .result-arrow {
   color: var(--billblaster-white);
+}
+
+.billblaster-demo .delegate-card:hover,
+.billblaster-demo .delegate-card:focus-visible,
+.billblaster-demo .delegate-card-pinned:hover,
+.billblaster-demo .delegate-card-pinned:focus-visible {
+  background: var(--billblaster-matte-grey);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .delegate-card:hover .delegate-meta,
+.billblaster-demo .delegate-card:hover .delegate-role,
+.billblaster-demo .delegate-card:hover .contact-link,
+.billblaster-demo .delegate-card:hover .muted,
+.billblaster-demo .delegate-card-pinned:hover .delegate-meta,
+.billblaster-demo .delegate-card-pinned:hover .delegate-role,
+.billblaster-demo .delegate-card-pinned:hover .contact-link,
+.billblaster-demo .delegate-card-pinned:hover .muted {
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .member-vote {
+  border-top: 1px solid var(--billblaster-border);
+}
+
+.billblaster-demo .info-sections {
+  border-top-color: var(--billblaster-border);
+}
+
+.billblaster-demo .info-section {
+  border-bottom-color: var(--billblaster-border);
+}
+
+.billblaster-demo .info-action-link:hover,
+.billblaster-demo .info-action-link:focus-visible {
+  background: var(--billblaster-white);
+  color: var(--billblaster-black);
 }
 
 .billblaster-demo .demo-controls-grid {
