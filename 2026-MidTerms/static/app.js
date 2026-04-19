@@ -159,6 +159,18 @@ function showLocationReadyEmptyState() {
   setEmptyStateCopy(LOCATION_READY_EMPTY_STATE_TITLE, LOCATION_READY_EMPTY_STATE_BODY);
 }
 
+function hideInstructionState() {
+  elements.emptyState.classList.add("detail-hidden");
+  setEmptyStateCopy("", "");
+}
+
+function hidePinnedRepresentatives() {
+  if (!elements.representativesModule) {
+    return;
+  }
+  elements.representativesModule.classList.add("detail-hidden");
+}
+
 function renderStateOptions(states) {
   elements.stateSelect.innerHTML = "";
   const placeholder = document.createElement("option");
@@ -415,6 +427,25 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
   });
 }
 
+function formatBillMeta(bill) {
+  const segments = [];
+  if (bill.lawNumber) {
+    segments.push(`LAW: ${bill.lawNumber}`);
+    if (bill.latestActionDate) {
+      segments.push(`SIGNED: ${bill.latestActionDate}`);
+    }
+    return segments.join(" | ");
+  }
+
+  if (bill.billLabel) {
+    segments.push(`BILL: ${bill.billLabel}`);
+  }
+  if (bill.latestActionDate) {
+    segments.push(`LAST ACTION: ${bill.latestActionDate}`);
+  }
+  return segments.join(" | ") || "Official congressional bill activity";
+}
+
 function renderDistrictSelector(options, selectedState, selectedDistrict) {
   if (!elements.districtSelectField || !elements.districtSelect) {
     return;
@@ -651,14 +682,17 @@ function renderVotes(votes) {
 }
 
 function showDetail(payload) {
-  elements.emptyState.classList.add("detail-hidden");
+  hideInstructionState();
+  hidePinnedRepresentatives();
   elements.billDetail.classList.remove("detail-hidden");
 
   elements.billLabel.textContent = payload.bill.billLabel;
   elements.billTitle.textContent = payload.bill.title;
   elements.lawBadge.textContent =
-    payload.bill.lawNumber || `${payload.bill.congressLabel || `${payload.bill.congress}th`} Congress Bill`;
-  elements.billMeta.textContent = `${payload.bill.latestActionDate || "Unknown date"} · ${payload.bill.latestActionText || "Official congressional bill activity"}`;
+    payload.bill.lawNumber
+      ? "Public Law"
+      : `${payload.bill.congressLabel || `${payload.bill.congress}th`} Congress Bill`;
+  elements.billMeta.textContent = formatBillMeta(payload.bill);
 
   renderDelegation(payload.representatives || []);
   renderVotes(payload.votes || []);
@@ -679,6 +713,11 @@ async function loadBillVotes(result) {
   }
 
   setStatus(`Loading vote history for ${result.billLabel}...`);
+  hideInstructionState();
+  hidePinnedRepresentatives();
+  elements.billDetail.classList.remove("detail-hidden");
+  elements.delegationCards.innerHTML = "";
+  elements.voteTimeline.innerHTML = "";
 
   try {
     const query = buildQuery({
@@ -936,6 +975,16 @@ function wireEvents() {
       await handleLocationReady("District selected.", true);
     });
   }
+
+  document.addEventListener("click", (event) => {
+    const billButton = event.target instanceof Element
+      ? event.target.closest(".result-card")
+      : null;
+    if (!billButton) {
+      return;
+    }
+    hideInstructionState();
+  });
 }
 
 async function bootstrap() {
