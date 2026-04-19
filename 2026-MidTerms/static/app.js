@@ -1,26 +1,28 @@
 const state = {
   selectedBill: null,
-  selectedCandidateId: null,
   activeQuery: "",
   lastLocationKey: "",
-  fundingSlices: [],
-  fundingInnerRadius: 0,
-  fundingOuterRadius: 0,
-  fundingHoverIndex: -1,
   stateNameToCode: {},
+  suppressLocationEvents: false,
 };
 
 const DEFAULT_EMPTY_STATE_TITLE = "Pick a bill to unlock the vote breakdown";
 const DEFAULT_EMPTY_STATE_BODY =
   "This prototype focuses on enacted laws from the 118th and 119th Congresses, plus a small featured comparison set. Choose a result on the left and we will pull the official House and Senate roll calls.";
-const LOCATION_READY_EMPTY_STATE_TITLE =
-  "LOCATION SET. SELECT A FEATURED BILL BELOW TO VIEW VOTES.";
+const LOCATION_READY_EMPTY_STATE_TITLE = "Pick a featured bill to unlock the vote breakdown";
+const LOCATION_READY_EMPTY_STATE_BODY =
+  "Your representatives are pinned above. Select a featured bill to compare their recorded votes.";
 
 const elements = {
   billSearch: document.querySelector("#billSearch"),
   stateSelect: document.querySelector("#stateSelect"),
   districtInput: document.querySelector("#districtInput"),
+  districtSelectField: document.querySelector("#districtSelectField"),
+  districtSelect: document.querySelector("#districtSelect"),
+  zipInput: document.querySelector("#zipInput"),
   useLocationButton: document.querySelector("#useLocationButton"),
+  infoButton: document.querySelector("#infoButton"),
+  infoPanel: document.querySelector("#infoPanel"),
   searchResults: document.querySelector("#searchResults"),
   statusMessage: document.querySelector("#statusMessage"),
   matchCount: document.querySelector("#matchCount"),
@@ -28,6 +30,9 @@ const elements = {
   emptyState: document.querySelector("#emptyState"),
   emptyStateTitle: document.querySelector("#emptyState h2"),
   emptyStateBody: document.querySelector("#emptyState p"),
+  representativesModule: document.querySelector("#representativesModule"),
+  representativesMeta: document.querySelector("#representativesMeta"),
+  representativesCards: document.querySelector("#representativesCards"),
   billDetail: document.querySelector("#billDetail"),
   billLabel: document.querySelector("#billLabel"),
   billTitle: document.querySelector("#billTitle"),
@@ -35,26 +40,33 @@ const elements = {
   billMeta: document.querySelector("#billMeta"),
   delegationCards: document.querySelector("#delegationCards"),
   voteTimeline: document.querySelector("#voteTimeline"),
-  fundingPanel: document.querySelector("#fundingPanel"),
-  fundingSource: document.querySelector("#fundingSource"),
-  fundingEmpty: document.querySelector("#fundingEmpty"),
-  fundingDetail: document.querySelector("#fundingDetail"),
-  fundingCandidateRole: document.querySelector("#fundingCandidateRole"),
-  fundingCandidateName: document.querySelector("#fundingCandidateName"),
-  fundingCandidateMeta: document.querySelector("#fundingCandidateMeta"),
-  fundingChart: document.querySelector("#fundingChart"),
-  fundingLegend: document.querySelector("#fundingLegend"),
-  fundingTooltip: document.querySelector("#fundingTooltip"),
 };
 
 let searchTimer = null;
+let zipTimer = null;
 
 async function fetchJson(url) {
-  const response = await fetch(url);
-  const payload = await response.json();
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  const text = await response.text();
+  let payload = {};
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch (error) {
+      throw new Error("The server returned an invalid response.");
+    }
+  }
+
   if (!response.ok) {
     throw new Error(payload.error || "Something went wrong.");
   }
+
   return payload;
 }
 
@@ -72,27 +84,6 @@ function setStatus(message) {
   elements.statusMessage.textContent = message;
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value || 0);
-}
-
-function formatCompactCurrency(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value || 0);
-}
-
-function candidateMeta(member) {
-  return `${member.party || "Unknown party"} · ${member.state}${member.district ? `-${member.district}` : ""}`;
-}
-
 function normalizedDistrictValue() {
   const digits = (elements.districtInput.value || "").replace(/\D/g, "");
   if (!digits) {
@@ -101,15 +92,29 @@ function normalizedDistrictValue() {
   return String(Number.parseInt(digits, 10));
 }
 
-function hasLocationSelection() {
+function normalizedZipValue() {
+  const digits = (elements.zipInput?.value || "").replace(/\D/g, "");
+  return digits.slice(0, 5);
+}
+
+function hasManualLocationSelection() {
   return Boolean(elements.stateSelect.value && normalizedDistrictValue());
 }
 
+function hasZipSelection() {
+  return normalizedZipValue().length === 5;
+}
+
 function currentLocationKey() {
-  if (!hasLocationSelection()) {
-    return "";
+  if (hasZipSelection()) {
+    return `zip:${normalizedZipValue()}:${elements.stateSelect.value}:${normalizedDistrictValue()}`;
   }
-  return `${elements.stateSelect.value}:${normalizedDistrictValue()}`;
+
+  if (hasManualLocationSelection()) {
+    return `manual:${elements.stateSelect.value}:${normalizedDistrictValue()}`;
+  }
+
+  return "";
 }
 
 function syncDistrictInput() {
@@ -117,6 +122,13 @@ function syncDistrictInput() {
   if (normalizedDistrict) {
     elements.districtInput.value = normalizedDistrict;
   }
+}
+
+function syncZipInput() {
+  if (!elements.zipInput) {
+    return;
+  }
+  elements.zipInput.value = normalizedZipValue();
 }
 
 function setEmptyStateCopy(title, body = "") {
@@ -144,10 +156,11 @@ function showLocationReadyEmptyState() {
   }
   elements.billDetail.classList.add("detail-hidden");
   elements.emptyState.classList.remove("detail-hidden");
-  setEmptyStateCopy(LOCATION_READY_EMPTY_STATE_TITLE);
+  setEmptyStateCopy(LOCATION_READY_EMPTY_STATE_TITLE, LOCATION_READY_EMPTY_STATE_BODY);
 }
 
 function renderStateOptions(states) {
+  elements.stateSelect.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = "Choose a state";
@@ -168,7 +181,20 @@ function setLocationButtonState(isLoading) {
   }
 
   elements.useLocationButton.disabled = isLoading;
-  elements.useLocationButton.textContent = isLoading ? "LOCATING..." : "LOCATE";
+  elements.useLocationButton.textContent = isLoading ? "Finding..." : "Locate";
+}
+
+function toggleInfoPanel(forceOpen) {
+  if (!elements.infoButton || !elements.infoPanel) {
+    return;
+  }
+
+  const shouldOpen = typeof forceOpen === "boolean"
+    ? forceOpen
+    : elements.infoPanel.classList.contains("detail-hidden");
+
+  elements.infoPanel.classList.toggle("detail-hidden", !shouldOpen);
+  elements.infoButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
 }
 
 function loadJsonp(url) {
@@ -263,278 +289,202 @@ function getCurrentPosition() {
   });
 }
 
-async function applyDetectedLocation(locationInfo) {
-  elements.stateSelect.value = locationInfo.stateCode;
-  elements.districtInput.value = locationInfo.district;
-  await handleLocationReady(`Location set for ${locationInfo.stateName}, district ${locationInfo.district}.`, true);
+function representativeLocationLabel(stateCode, district) {
+  if (!stateCode) {
+    return "";
+  }
+  if (district === "0") {
+    return `${stateCode} AT-LARGE`;
+  }
+  if (district === "98") {
+    return `${stateCode} DELEGATE`;
+  }
+  return district ? `${stateCode}-${district}` : stateCode;
 }
 
-async function handleUseMyLocation() {
-  setLocationButtonState(true);
-  setStatus("Requesting your location...");
+function escapeAttribute(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
 
-  try {
-    const position = await getCurrentPosition();
-    setStatus("Looking up your congressional district...");
+function buildContactMarkup(url, label, options = {}) {
+  if (!url) {
+    return `<span class="muted contact-link-disabled">${options.fallback || `${label} unavailable`}</span>`;
+  }
 
-    const locationInfo = await reverseGeocodeLocation(
-      position.coords.latitude,
-      position.coords.longitude
-    );
+  const attributes = [
+    `href="${escapeAttribute(url)}"`,
+    `class="contact-link"`,
+  ];
 
-    await applyDetectedLocation(locationInfo);
-  } catch (error) {
-    if (error?.code === 1) {
-      setStatus("Location access was denied. You can still choose your state and district manually.");
-    } else if (error?.code === 2) {
-      setStatus("Your location could not be determined. Please try again or enter it manually.");
-    } else if (error?.code === 3) {
-      setStatus("The location request timed out. Please try again.");
-    } else {
-      setStatus(error.message || "I could not use your location just now.");
+  if (options.newTab !== false && !url.startsWith("tel:") && !url.startsWith("mailto:")) {
+    attributes.push('target="_blank"');
+    attributes.push('rel="noreferrer"');
+  }
+
+  if (options.title) {
+    attributes.push(`title="${escapeAttribute(options.title)}"`);
+  }
+
+  if (options.ariaLabel) {
+    attributes.push(`aria-label="${escapeAttribute(options.ariaLabel)}"`);
+  }
+
+  return `<a ${attributes.join(" ")}>${label}</a>`;
+}
+
+function buildRepresentativeCardMarkup(member, extraLabel = "") {
+  const phoneMarkup = buildContactMarkup(
+    member.phone ? `tel:${member.phone}` : "",
+    "Phone",
+    {
+      newTab: false,
+      title: member.phone || "",
+      ariaLabel: member.phone
+        ? `Call ${member.displayName || member.listName || "this office"} at ${member.phone}`
+        : "",
+      fallback: "Phone unavailable",
     }
-  } finally {
-    setLocationButtonState(false);
-  }
-}
+  );
+  const contactUrl = member.email ? `mailto:${member.email}` : member.website;
+  const contactLabel = member.email ? "Email" : "Contact";
+  const contactMarkup = buildContactMarkup(contactUrl || "", contactLabel, {
+    newTab: !member.email,
+    title: member.email || member.website || "",
+    ariaLabel: member.email
+      ? `Email ${member.displayName || member.listName || "this office"}`
+      : `Open official contact page for ${member.displayName || member.listName || "this office"}`,
+    fallback: member.email ? "Email unavailable" : "Contact unavailable",
+  });
+  const financeMarkup = buildContactMarkup(member.financeUrl || "", "OpenSecrets", {
+    title: "Open campaign finance profile on OpenSecrets",
+    ariaLabel: `Open OpenSecrets finance data for ${member.displayName || member.listName || "this office"}`,
+    fallback: "Finance data unavailable",
+  });
+  const locationLabel = representativeLocationLabel(member.state, member.district);
 
-function hideFundingTooltip() {
-  if (!elements.fundingTooltip) {
-    return;
-  }
-  elements.fundingTooltip.classList.add("detail-hidden");
-}
-
-function resetFundingChart() {
-  state.fundingSlices = [];
-  state.fundingHoverIndex = -1;
-  state.fundingInnerRadius = 0;
-  state.fundingOuterRadius = 0;
-  if (!elements.fundingChart) {
-    return;
-  }
-  const context = elements.fundingChart.getContext("2d");
-  if (!context) {
-    return;
-  }
-  context.clearRect(0, 0, elements.fundingChart.width, elements.fundingChart.height);
-}
-
-function resetFundingPanel(message = "Select a delegation member above to view a PAC spending profile.") {
-  hideFundingTooltip();
-  resetFundingChart();
-  if (elements.fundingEmpty) {
-    elements.fundingEmpty.textContent = message;
-    elements.fundingEmpty.classList.remove("detail-hidden");
-  }
-  if (elements.fundingDetail) {
-    elements.fundingDetail.classList.add("detail-hidden");
-  }
-  if (elements.fundingSource) {
-    elements.fundingSource.textContent = "Select a candidate in your delegation to view PAC spending.";
-  }
-  if (elements.fundingLegend) {
-    elements.fundingLegend.innerHTML = "";
-  }
-}
-
-function fundingTooltipMarkup(segment) {
   return `
-    <strong>${segment.label}</strong>
-    <span>${formatCurrency(segment.amount)} · ${segment.percent}%</span>
+    <p class="delegate-role">${member.roleLabel || "Representative"}</p>
+    <h3>${member.displayName || member.listName || "Unknown member"}</h3>
+    <p class="delegate-meta">${member.party || "Unknown party"}${locationLabel ? ` · ${locationLabel}` : ""}</p>
+    ${extraLabel ? `<p class="delegate-select-label">${extraLabel}</p>` : ""}
+    <div class="contact-row">
+      ${phoneMarkup}
+      ${contactMarkup}
+      ${financeMarkup}
+    </div>
   `;
 }
 
-function drawFundingChart(payload, hoverIndex = -1) {
-  const canvas = elements.fundingChart;
-  if (!canvas) {
+function resetRepresentativesModule() {
+  if (!elements.representativesModule) {
+    return;
+  }
+  elements.representativesModule.classList.add("detail-hidden");
+  elements.representativesCards.innerHTML = "";
+  elements.representativesMeta.textContent = "Set your location to pin your current delegation here.";
+}
+
+function renderPinnedRepresentatives(representatives, locationLabel) {
+  if (!elements.representativesModule) {
     return;
   }
 
-  const context = canvas.getContext("2d");
-  if (!context) {
+  elements.representativesCards.innerHTML = "";
+  elements.representativesModule.classList.remove("detail-hidden");
+  elements.representativesMeta.textContent = locationLabel
+    ? `Pinned for ${locationLabel}. These members stay visible while you browse bills.`
+    : "Pinned current delegation.";
+
+  if (!representatives.length) {
+    const note = document.createElement("p");
+    note.className = "inline-note";
+    note.textContent = "No representatives were returned for that location.";
+    elements.representativesCards.append(note);
     return;
   }
 
-  const width = canvas.width;
-  const height = canvas.height;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const outerRadius = Math.min(width, height) / 2 - 18;
-  const innerRadius = outerRadius * 0.56;
-  const totalAmount = payload.totalAmount || 0;
+  representatives.forEach((member) => {
+    const card = document.createElement("article");
+    card.className = "delegate-card delegate-card-pinned";
+    card.innerHTML = buildRepresentativeCardMarkup(member);
+    elements.representativesCards.append(card);
+  });
+}
 
-  state.fundingSlices = [];
-  state.fundingOuterRadius = outerRadius;
-  state.fundingInnerRadius = innerRadius;
+function renderDistrictSelector(options, selectedState, selectedDistrict) {
+  if (!elements.districtSelectField || !elements.districtSelect) {
+    return;
+  }
 
-  context.clearRect(0, 0, width, height);
+  elements.districtSelect.innerHTML = "";
 
-  let startAngle = -Math.PI / 2;
-  payload.categories.forEach((segment, index) => {
-    const sliceAngle = (segment.percent / 100) * Math.PI * 2;
-    const endAngle = startAngle + sliceAngle;
+  if (!options.length || options.length === 1) {
+    elements.districtSelectField.classList.add("detail-hidden");
+    return;
+  }
 
-    context.beginPath();
-    context.moveTo(centerX, centerY);
-    context.arc(centerX, centerY, outerRadius, startAngle, endAngle);
-    context.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
-    context.closePath();
-    context.fillStyle = segment.color;
-    context.fill();
-    context.lineWidth = hoverIndex === index ? 2 : 1;
-    context.strokeStyle = "#000000";
-    context.stroke();
-
-    state.fundingSlices.push({
-      ...segment,
-      startAngle,
-      endAngle,
-    });
-    startAngle = endAngle;
+  options.forEach((option) => {
+    const selectOption = document.createElement("option");
+    selectOption.value = `${option.state}|${option.district}`;
+    const coverageLabel = option.coveragePercent ? ` · ${option.coveragePercent}% OF ZIP` : "";
+    selectOption.textContent = `${option.label}${coverageLabel}`;
+    if (option.state === selectedState && option.district === selectedDistrict) {
+      selectOption.selected = true;
+    }
+    elements.districtSelect.append(selectOption);
   });
 
-  context.beginPath();
-  context.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
-  context.fillStyle = "#ffffff";
-  context.fill();
-  context.lineWidth = 1;
-  context.strokeStyle = "#000000";
-  context.stroke();
-
-  context.fillStyle = "#000000";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font = '900 13px "SFMono-Regular", Menlo, Consolas, monospace';
-  context.fillText("PAC MIX", centerX, centerY - 14);
-  context.font = '900 24px "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif';
-  context.fillText(formatCompactCurrency(totalAmount), centerX, centerY + 16);
+  elements.districtSelectField.classList.remove("detail-hidden");
 }
 
-function fundingSliceAtEvent(event) {
-  const canvas = elements.fundingChart;
-  if (!canvas) {
-    return -1;
-  }
+async function loadRepresentatives(options = {}) {
+  const zip = options.zip ?? normalizedZipValue();
+  const stateCode = options.state ?? elements.stateSelect.value;
+  const district = options.district ?? normalizedDistrictValue();
+  const query = {};
 
-  const rect = canvas.getBoundingClientRect();
-  const x = ((event.clientX - rect.left) / rect.width) * canvas.width;
-  const y = ((event.clientY - rect.top) / rect.height) * canvas.height;
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const deltaX = x - centerX;
-  const deltaY = y - centerY;
-  const distance = Math.sqrt((deltaX ** 2) + (deltaY ** 2));
-
-  if (distance < state.fundingInnerRadius || distance > state.fundingOuterRadius) {
-    return -1;
-  }
-
-  let angle = Math.atan2(deltaY, deltaX);
-  if (angle < -Math.PI / 2) {
-    angle += Math.PI * 2;
-  }
-
-  return state.fundingSlices.findIndex((segment) => angle >= segment.startAngle && angle <= segment.endAngle);
-}
-
-function updateFundingTooltip(segment, event) {
-  if (!elements.fundingTooltip || !elements.fundingChart) {
-    return;
-  }
-
-  const rect = elements.fundingChart.getBoundingClientRect();
-  const left = event.clientX - rect.left + 12;
-  const top = event.clientY - rect.top + 12;
-
-  elements.fundingTooltip.innerHTML = fundingTooltipMarkup(segment);
-  elements.fundingTooltip.style.left = `${left}px`;
-  elements.fundingTooltip.style.top = `${top}px`;
-  elements.fundingTooltip.classList.remove("detail-hidden");
-}
-
-function renderFundingLegend(payload) {
-  if (!elements.fundingLegend) {
-    return;
-  }
-
-  elements.fundingLegend.innerHTML = payload.categories
-    .map(
-      (segment) => `
-        <div class="funding-legend-item">
-          <span class="funding-swatch" style="background:${segment.color};"></span>
-          <div>
-            <p class="funding-legend-label">${segment.label}</p>
-            <p class="funding-legend-meta">${segment.percent}% · ${formatCurrency(segment.amount)}</p>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-}
-
-function renderFunding(payload, member) {
-  if (elements.fundingEmpty) {
-    elements.fundingEmpty.classList.add("detail-hidden");
-  }
-  if (elements.fundingDetail) {
-    elements.fundingDetail.classList.remove("detail-hidden");
-  }
-  if (elements.fundingSource) {
-    const sourceTail = payload.openSecretsReady
-      ? "OpenSecrets API key detected. Mock profile shown until the live endpoint is wired."
-      : "Mocked prototype data shaped for a future OpenSecrets integration.";
-    elements.fundingSource.textContent = `${payload.sourceLabel} · ${sourceTail}`;
-  }
-  elements.fundingCandidateRole.textContent = member.roleLabel || "Candidate";
-  elements.fundingCandidateName.textContent = member.displayName || member.listName || payload.displayName;
-  elements.fundingCandidateMeta.textContent = `${candidateMeta(member)} · Total ${formatCompactCurrency(payload.totalAmount)}`;
-
-  drawFundingChart(payload);
-  renderFundingLegend(payload);
-}
-
-function wireFundingChartInteractions(payload) {
-  if (!elements.fundingChart) {
-    return;
-  }
-
-  elements.fundingChart.onmousemove = (event) => {
-    const hoverIndex = fundingSliceAtEvent(event);
-    if (hoverIndex === -1) {
-      if (state.fundingHoverIndex !== -1) {
-        state.fundingHoverIndex = -1;
-        drawFundingChart(payload);
-      }
-      hideFundingTooltip();
-      return;
+  if (zip && zip.length === 5) {
+    query.zip = zip;
+    if (stateCode) {
+      query.state = stateCode;
     }
-
-    if (hoverIndex !== state.fundingHoverIndex) {
-      state.fundingHoverIndex = hoverIndex;
-      drawFundingChart(payload, hoverIndex);
+    if (district) {
+      query.district = district;
     }
-    updateFundingTooltip(payload.categories[hoverIndex], event);
-  };
+  } else if (stateCode && district) {
+    query.state = stateCode;
+    query.district = district;
+  } else {
+    resetRepresentativesModule();
+    renderDistrictSelector([], "", "");
+    return null;
+  }
 
-  elements.fundingChart.onmouseleave = () => {
-    state.fundingHoverIndex = -1;
-    drawFundingChart(payload);
-    hideFundingTooltip();
-  };
-}
+  if (!options.quiet) {
+    setStatus("Loading your representatives...");
+  }
 
-function syncSelectedDelegationCard() {
-  const cards = elements.delegationCards.querySelectorAll(".delegate-card");
-  cards.forEach((card) => {
-    const selected = card.dataset.candidateId === state.selectedCandidateId;
-    card.classList.toggle("is-selected", selected);
-    card.setAttribute("aria-pressed", selected ? "true" : "false");
-    const label = card.querySelector(".delegate-select-label");
-    if (label) {
-      label.textContent = selected ? "Funding selected" : "Select for funding";
-    }
-  });
+  const payload = await fetchJson(`/api/representatives?${buildQuery(query)}`);
+
+  state.suppressLocationEvents = true;
+  elements.stateSelect.value = payload.state || "";
+  elements.districtInput.value = payload.district || "";
+  if (payload.zip && elements.zipInput) {
+    elements.zipInput.value = payload.zip;
+  }
+  state.suppressLocationEvents = false;
+
+  renderDistrictSelector(payload.districtOptions || [], payload.state, payload.district);
+  renderPinnedRepresentatives(
+    payload.representatives || [],
+    representativeLocationLabel(payload.state, payload.district)
+  );
+
+  return payload;
 }
 
 function renderSearchResults(results) {
@@ -604,41 +554,10 @@ function renderSearchResults(results) {
   appendSection(featuredResults.length && standardResults.length ? "MATCHES" : "", standardResults);
 }
 
-async function loadCandidateFunding(member, options = {}) {
-  const candidateId = member?.bioguideId;
-  if (!candidateId) {
-    resetFundingPanel("Funding data is unavailable because this candidate is missing an id.");
-    return;
-  }
-
-  state.selectedCandidateId = candidateId;
-  syncSelectedDelegationCard();
-
-  if (!options.quiet) {
-    setStatus(`Loading PAC spending for ${member.displayName || member.listName}...`);
-  }
-
-  try {
-    const payload = await fetchJson(`/api/candidate/funding/${encodeURIComponent(candidateId)}`);
-    renderFunding(payload, member);
-    wireFundingChartInteractions(payload);
-    if (!options.quiet) {
-      setStatus(`Showing PAC spending for ${member.displayName || member.listName}.`);
-    }
-  } catch (error) {
-    resetFundingPanel(error.message);
-    if (!options.quiet) {
-      setStatus(error.message);
-    }
-  }
-}
-
 function renderDelegation(representatives) {
   elements.delegationCards.innerHTML = "";
 
   if (!representatives.length) {
-    state.selectedCandidateId = null;
-    resetFundingPanel("No delegation members are available for PAC spending data.");
     const note = document.createElement("p");
     note.className = "inline-note";
     note.textContent = "No delegation members were returned for that state and district.";
@@ -646,55 +565,12 @@ function renderDelegation(representatives) {
     return;
   }
 
-  let selectedMember = null;
   representatives.forEach((member) => {
     const card = document.createElement("article");
     card.className = "delegate-card";
-    card.dataset.candidateId = member.bioguideId || "";
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    const phoneMarkup = member.phone ? `<a href="tel:${member.phone}" class="contact-link">${member.phone}</a>` : "<span class='muted'>Phone unavailable</span>";
-    const siteMarkup = member.website ? `<a href="${member.website}" target="_blank" rel="noreferrer" class="contact-link">Website</a>` : "<span class='muted'>Website unavailable</span>";
-    card.innerHTML = `
-      <p class="delegate-role">${member.roleLabel}</p>
-      <h3>${member.displayName || member.listName}</h3>
-      <p class="delegate-meta">${candidateMeta(member)}</p>
-      <p class="delegate-select-label">${member.bioguideId === state.selectedCandidateId ? "Funding selected" : "Select for funding"}</p>
-      <div class="contact-row">
-        ${phoneMarkup}
-        ${siteMarkup}
-      </div>
-    `;
-
-    card.addEventListener("click", () => {
-      void loadCandidateFunding(member);
-    });
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        void loadCandidateFunding(member);
-      }
-    });
-    card.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        event.stopPropagation();
-      });
-    });
-
-    if (member.bioguideId === state.selectedCandidateId) {
-      selectedMember = member;
-    }
+    card.innerHTML = buildRepresentativeCardMarkup(member);
     elements.delegationCards.append(card);
   });
-
-  syncSelectedDelegationCard();
-
-  if (selectedMember) {
-    void loadCandidateFunding(selectedMember, { quiet: true });
-  } else {
-    state.selectedCandidateId = null;
-    resetFundingPanel("Select a delegation member above to view a PAC spending profile.");
-  }
 }
 
 function voteTone(vote) {
@@ -793,7 +669,7 @@ async function loadBillVotes(result) {
   const district = normalizedDistrictValue();
 
   if (!stateCode) {
-    setStatus("Choose a state first so I can look up the right senators and House member.");
+    setStatus("Choose a state or ZIP code first so I can look up the right delegation.");
     return;
   }
 
@@ -855,10 +731,13 @@ async function runSearch(options = {}) {
 
 async function handleLocationReady(statusPrefix = "Location set.", force = false) {
   syncDistrictInput();
-  const locationKey = currentLocationKey();
+  syncZipInput();
 
+  const locationKey = currentLocationKey();
   if (!locationKey) {
     state.lastLocationKey = "";
+    resetRepresentativesModule();
+    renderDistrictSelector([], "", "");
     showDefaultEmptyState();
     return;
   }
@@ -869,16 +748,37 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
 
   state.lastLocationKey = locationKey;
 
-  if (state.selectedBill) {
-    await loadBillVotes(state.selectedBill);
-    return;
-  }
+  try {
+    const payload = await loadRepresentatives({ quiet: true });
+    if (!payload) {
+      showDefaultEmptyState();
+      return;
+    }
 
-  showLocationReadyEmptyState();
-  await runSearch({
-    featured: true,
-    statusMessage: `${statusPrefix} Select a featured bill below to view votes.`,
-  });
+    state.lastLocationKey = payload.zip
+      ? `zip:${payload.zip}:${payload.state}:${payload.district || ""}`
+      : `manual:${payload.state}:${payload.district || ""}`;
+
+    const locationLabel = representativeLocationLabel(payload.state, payload.district);
+
+    if (state.selectedBill) {
+      await loadBillVotes(state.selectedBill);
+      return;
+    }
+
+    showLocationReadyEmptyState();
+    const statusMessage = payload.hasMultipleDistrictMatches
+      ? `${statusPrefix} Representatives pinned for ${locationLabel}. This ZIP crosses multiple districts, so use the selector if needed, then choose a featured bill below to view votes.`
+      : `${statusPrefix} Representatives pinned for ${locationLabel}. Select a featured bill below to view votes.`;
+
+    await runSearch({
+      featured: true,
+      statusMessage,
+    });
+  } catch (error) {
+    resetRepresentativesModule();
+    setStatus(error.message || "I could not load your representatives just now.");
+  }
 }
 
 function scheduleSearch() {
@@ -886,35 +786,156 @@ function scheduleSearch() {
   searchTimer = window.setTimeout(runSearch, 250);
 }
 
+function scheduleZipLookup() {
+  window.clearTimeout(zipTimer);
+  zipTimer = window.setTimeout(async () => {
+    if (normalizedZipValue().length === 5) {
+      await handleLocationReady("ZIP code set.", true);
+    }
+  }, 180);
+}
+
+function clearZipContext() {
+  if (elements.zipInput) {
+    elements.zipInput.value = "";
+  }
+  renderDistrictSelector([], "", "");
+}
+
+async function applyDetectedLocation(locationInfo) {
+  state.suppressLocationEvents = true;
+  clearZipContext();
+  elements.stateSelect.value = locationInfo.stateCode;
+  elements.districtInput.value = locationInfo.district;
+  state.suppressLocationEvents = false;
+  await handleLocationReady(`Location set for ${locationInfo.stateName}, district ${locationInfo.district}.`, true);
+}
+
+async function handleUseMyLocation() {
+  setLocationButtonState(true);
+  setStatus("Requesting your location...");
+
+  try {
+    const position = await getCurrentPosition();
+    setStatus("Looking up your congressional district...");
+
+    const locationInfo = await reverseGeocodeLocation(
+      position.coords.latitude,
+      position.coords.longitude
+    );
+
+    await applyDetectedLocation(locationInfo);
+  } catch (error) {
+    if (error?.code === 1) {
+      setStatus("Location access was denied. You can still enter a ZIP code or choose your district manually.");
+    } else if (error?.code === 2) {
+      setStatus("Your location could not be determined. Please try again or enter a ZIP code.");
+    } else if (error?.code === 3) {
+      setStatus("The location request timed out. Please try again.");
+    } else {
+      setStatus(error.message || "I could not use your location just now.");
+    }
+  } finally {
+    setLocationButtonState(false);
+  }
+}
+
 function wireEvents() {
   elements.billSearch.addEventListener("input", scheduleSearch);
   elements.useLocationButton.addEventListener("click", handleUseMyLocation);
 
+  if (elements.infoButton) {
+    elements.infoButton.addEventListener("click", () => {
+      toggleInfoPanel();
+    });
+  }
+
   elements.clearButton.addEventListener("click", () => {
     state.selectedBill = null;
-    state.selectedCandidateId = null;
     state.activeQuery = "";
     state.lastLocationKey = "";
+    state.suppressLocationEvents = true;
     elements.billSearch.value = "";
+    elements.zipInput.value = "";
+    elements.stateSelect.value = "";
     elements.districtInput.value = "";
+    state.suppressLocationEvents = false;
+    renderDistrictSelector([], "", "");
+    resetRepresentativesModule();
     elements.billDetail.classList.add("detail-hidden");
     elements.emptyState.classList.remove("detail-hidden");
     setEmptyStateCopy(DEFAULT_EMPTY_STATE_TITLE, DEFAULT_EMPTY_STATE_BODY);
-    resetFundingPanel();
     runSearch();
   });
 
   elements.stateSelect.addEventListener("change", async () => {
+    if (state.suppressLocationEvents) {
+      return;
+    }
+    clearZipContext();
+    elements.districtInput.value = "";
     await handleLocationReady("Location set.");
   });
 
   elements.districtInput.addEventListener("input", async () => {
+    if (state.suppressLocationEvents) {
+      return;
+    }
+    clearZipContext();
     await handleLocationReady("Location set.");
   });
 
   elements.districtInput.addEventListener("change", async () => {
+    if (state.suppressLocationEvents) {
+      return;
+    }
+    clearZipContext();
     await handleLocationReady("Location set.");
   });
+
+  elements.zipInput.addEventListener("input", () => {
+    if (state.suppressLocationEvents) {
+      return;
+    }
+    syncZipInput();
+    if (normalizedZipValue().length === 5) {
+      scheduleZipLookup();
+      return;
+    }
+
+    renderDistrictSelector([], "", "");
+    if (!hasManualLocationSelection() && !normalizedZipValue()) {
+      state.lastLocationKey = "";
+      resetRepresentativesModule();
+      showDefaultEmptyState();
+      setStatus("Enter a 5-digit ZIP code to load your representatives instantly.");
+    }
+  });
+
+  elements.zipInput.addEventListener("change", async () => {
+    if (state.suppressLocationEvents) {
+      return;
+    }
+    syncZipInput();
+    if (normalizedZipValue().length === 5) {
+      await handleLocationReady("ZIP code set.", true);
+    }
+  });
+
+  if (elements.districtSelect) {
+    elements.districtSelect.addEventListener("change", async () => {
+      const [selectedState, selectedDistrict] = (elements.districtSelect.value || "").split("|");
+      if (!selectedState || !selectedDistrict) {
+        return;
+      }
+
+      state.suppressLocationEvents = true;
+      elements.stateSelect.value = selectedState;
+      elements.districtInput.value = selectedDistrict;
+      state.suppressLocationEvents = false;
+      await handleLocationReady("District selected.", true);
+    });
+  }
 }
 
 async function bootstrap() {
@@ -927,6 +948,7 @@ async function bootstrap() {
       return;
     }
 
+    resetRepresentativesModule();
     wireEvents();
     await runSearch();
   } catch (error) {

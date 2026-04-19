@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>2026 MidTerms V1.0</title>
+    <title>2026 MidTerms V1.1</title>
     <link rel="stylesheet" href="/style.css?v=20260417" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">2026 MidTerms V1.0</p>
+          <p class="eyebrow">2026 MidTerms V1.1</p>
           <h1>Find a 2023-2026 law and see how your delegation voted.</h1>
           <p class="subcopy">
             Search enacted bills from the 118th and 119th Congresses, then compare the House and Senate votes for your local delegation in one place, with a small featured set of historical comparison bills at the top.
@@ -20,7 +20,7 @@
           <p class="hero-card-label">What this prototype does</p>
           <ul class="hero-list">
             <li>Search by bill title, bill number, or public law number</li>
-            <li>Look up your senators and House member by state and district</li>
+            <li>Look up your senators and House member by ZIP code, geolocation, or state and district</li>
             <li>Show historical roll call votes from official congressional sources</li>
           </ul>
         </div>
@@ -44,16 +44,102 @@
               <input id="districtInput" type="text" inputmode="numeric" placeholder="12" />
             </label>
 
+            <label class="field">
+              <span>ZIP code</span>
+              <input id="zipInput" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="90210" />
+            </label>
+
             <div class="field location-field">
-              <span>Auto-fill</span>
-              <button id="useLocationButton" class="location-button" type="button">LOCATE</button>
+              <span>Locate</span>
+              <button id="useLocationButton" class="location-button" type="button">Locate</button>
             </div>
+
+            <label id="districtSelectField" class="field detail-hidden">
+              <span>Select your district</span>
+              <select id="districtSelect"></select>
+            </label>
           </div>
 
           <div class="helper-row">
             <p id="statusMessage" class="status-message">Loading featured bills.</p>
-            <button id="clearButton" class="ghost-button" type="button">Clear</button>
+            <div class="helper-actions">
+              <button id="infoButton" class="ghost-button ghost-button-secondary" type="button" aria-expanded="false" aria-controls="infoPanel">Info</button>
+              <button id="clearButton" class="ghost-button" type="button">Clear</button>
+            </div>
           </div>
+        </section>
+
+        <section id="infoPanel" class="panel info-panel detail-hidden">
+          <div class="info-header">
+            <p class="eyebrow">V1 Election Brief</p>
+            <h2>2026 MIDTERMS: DATA IS POWER.</h2>
+          </div>
+          <div class="info-sections">
+            <article class="info-section">
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="9" y="16" width="30" height="22"></rect>
+                  <path d="M16 16V9h16v7"></path>
+                  <path d="M16 24h16"></path>
+                  <path d="m20 13 4 4 8-8"></path>
+                </svg>
+              </div>
+              <div class="info-copy-block">
+                <h3>THE VOTE.</h3>
+                <p class="info-copy">
+                  V1 tracks every major roll call in the House and Senate. Don't listen to what they say on the news; look at how they voted on the floor. This is the only record that matters when you head to the polls.
+                </p>
+              </div>
+            </article>
+
+            <article class="info-section">
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="24" cy="24" r="15"></circle>
+                  <path d="M24 13v22"></path>
+                  <path d="M29 17.5c-1.5-1.5-3.2-2.2-5-2.2-3.5 0-6 1.9-6 4.7 0 2.8 2.6 4.1 6 4.7 3.4.6 6 1.9 6 4.7s-2.5 4.8-6 4.8c-2.3 0-4.4-.8-6-2.4"></path>
+                </svg>
+              </div>
+              <div class="info-copy-block">
+                <h3>THE MONEY.</h3>
+                <p class="info-copy">
+                  Through our integrated OpenSecrets portals, you can see who is funding your representatives in real-time. Whether it's Big Oil, the Gun Lobby, or Big Pharma, you deserve to know whose interests are being represented before the 2026 election.
+                </p>
+              </div>
+            </article>
+
+            <article class="info-section">
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M16 10h16l4 4v24H12V10z"></path>
+                  <path d="M32 10v8h8"></path>
+                  <path d="M19 25c2.4 2.8 7.6 2.8 10 0"></path>
+                  <path d="M18 20h.01"></path>
+                  <path d="M30 20h.01"></path>
+                </svg>
+              </div>
+              <div class="info-copy-block">
+                <h3>THE REACH.</h3>
+                <p class="info-copy">
+                  Politics isn't a spectator sport. Use the built-in contact tools to call or email your reps directly. A single phone call from a constituent carries more weight than a thousand tweets. Make your voice heard before the cycle ends.
+                </p>
+                <div class="info-action-row">
+                  <a class="info-action-link" href="#zipInput">START WITH ZIP</a>
+                  <a class="info-action-link" href="#representativesModule">GO TO CONTACT TOOLS</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="representativesModule" class="panel representatives-module detail-hidden">
+          <div class="panel-heading">
+            <div>
+              <h2>Your Representatives</h2>
+              <p id="representativesMeta" class="bill-meta">Set your location to pin your current delegation here.</p>
+            </div>
+          </div>
+          <div id="representativesCards" class="delegation-grid"></div>
         </section>
 
         <section class="results-layout">
@@ -97,34 +183,6 @@
                   <h2>How they voted</h2>
                 </div>
                 <div id="voteTimeline" class="vote-timeline"></div>
-              </article>
-
-              <article class="panel funding-panel">
-                <div class="panel-heading">
-                  <div>
-                    <h2>Funding</h2>
-                    <p id="fundingSource" class="bill-meta">Select a candidate in your delegation to view PAC spending.</p>
-                  </div>
-                </div>
-                <div id="fundingEmpty" class="inline-note">Select a delegation member above to view a PAC spending profile.</div>
-                <div id="fundingDetail" class="funding-detail detail-hidden">
-                  <div class="funding-layout">
-                    <div class="funding-chart-column">
-                      <div class="funding-candidate-head">
-                        <p id="fundingCandidateRole" class="delegate-role"></p>
-                        <h3 id="fundingCandidateName"></h3>
-                        <p id="fundingCandidateMeta" class="delegate-meta"></p>
-                      </div>
-                      <div class="funding-chart-shell">
-                        <canvas id="fundingChart" class="funding-chart" width="320" height="320" aria-label="PAC spending donut chart"></canvas>
-                        <div id="fundingTooltip" class="funding-tooltip detail-hidden"></div>
-                      </div>
-                    </div>
-                    <div class="funding-legend-column">
-                      <div id="fundingLegend" class="funding-legend"></div>
-                    </div>
-                  </div>
-                </div>
               </article>
             </section>
           </section>

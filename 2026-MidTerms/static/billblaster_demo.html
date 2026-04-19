@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BillBlaster x V1 Demo</title>
+    <link rel="stylesheet" href="/billblaster.css?v=20260419" />
+  </head>
+  <body class="billblaster-demo">
+    <div class="demo-banner">BILLBLASTER x V1</div>
+    <div class="page-shell">
+      <header class="hero demo-hero">
+        <div class="hero-copy">
+          <p class="eyebrow">BillBlaster Demo</p>
+          <div class="brand-lockup">
+            <div class="billblaster-logo" aria-hidden="true">
+              <span>B</span>
+              <span>B</span>
+            </div>
+            <h1>Find a 2023-2026 law and see how your delegation voted.</h1>
+          </div>
+          <p class="subcopy">
+            A red-and-blue demo shell for BillBlaster, built on the same legislative data flow as V1 with ZIP-first representative lookup and direct finance profile links.
+          </p>
+        </div>
+        <div class="hero-card demo-hero-card">
+          <p class="hero-card-label">What this demo highlights</p>
+          <ul class="hero-list">
+            <li>ZIP-first location lookup with district fallback when a ZIP spans multiple seats</li>
+            <li>Featured legislation surfaced immediately after location is set</li>
+            <li>Direct OpenSecrets finance links next to each officeholder contact action</li>
+          </ul>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel controls-panel">
+          <div class="controls-grid demo-controls-grid">
+            <label class="field">
+              <span>ZIP code</span>
+              <input id="zipInput" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="90210" autofocus />
+            </label>
+
+            <div class="field location-field">
+              <span>Locate</span>
+              <button id="useLocationButton" class="location-button" type="button">Locate</button>
+            </div>
+
+            <label class="field">
+              <span>Bill search</span>
+              <input id="billSearch" type="search" placeholder="Try H.R. 2882 or budget" autocomplete="off" />
+            </label>
+
+            <label class="field">
+              <span>State</span>
+              <select id="stateSelect"></select>
+            </label>
+
+            <label class="field">
+              <span>House district</span>
+              <input id="districtInput" type="text" inputmode="numeric" placeholder="12" />
+            </label>
+
+            <label id="districtSelectField" class="field detail-hidden">
+              <span>Select your district</span>
+              <select id="districtSelect"></select>
+            </label>
+          </div>
+
+          <div class="helper-row">
+            <p id="statusMessage" class="status-message">Loading featured bills.</p>
+            <div class="helper-actions">
+              <button id="infoButton" class="ghost-button ghost-button-secondary" type="button" aria-expanded="false" aria-controls="infoPanel">Info</button>
+              <button id="clearButton" class="ghost-button" type="button">Clear</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="infoPanel" class="panel info-panel detail-hidden">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">BillBlaster Notes</p>
+              <h2>PAC Money &amp; Lobbying</h2>
+            </div>
+          </div>
+          <div class="info-copy-grid">
+            <p class="info-copy">
+              This BillBlaster demo keeps the V1 legislative tracking flow, but adds direct finance-link handoff so users can jump from a vote record to the relevant OpenSecrets profile without leaving the core experience behind.
+            </p>
+            <p class="info-copy">
+              The transparency framing remains direct and objective: the prototype highlights Big Oil, AIPAC, Gun Lobby, and Pharmaceutical influence so voters can connect candidate funding context with real congressional behavior ahead of the 2026 midterms.
+            </p>
+          </div>
+        </section>
+
+        <section id="representativesModule" class="panel representatives-module detail-hidden">
+          <div class="panel-heading">
+            <div>
+              <h2>Your Representatives</h2>
+              <p id="representativesMeta" class="bill-meta">Set your ZIP or district to pin your current delegation here.</p>
+            </div>
+          </div>
+          <div id="representativesCards" class="delegation-grid"></div>
+        </section>
+
+        <section class="results-layout">
+          <aside class="panel search-panel">
+            <div class="panel-heading">
+              <h2>Matches</h2>
+              <span id="matchCount" class="pill">0 results</span>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+          </aside>
+
+          <section class="detail-stack">
+            <section id="emptyState" class="panel empty-panel">
+              <h2>Pick a bill to unlock the vote breakdown</h2>
+              <p>
+                Set a ZIP code or locate yourself first, then choose a featured bill or search for a law to compare how your delegation voted.
+              </p>
+            </section>
+
+            <section id="billDetail" class="detail-hidden">
+              <article class="panel bill-panel">
+                <div class="panel-heading">
+                  <div>
+                    <p id="billLabel" class="eyebrow"></p>
+                    <h2 id="billTitle"></h2>
+                  </div>
+                  <span id="lawBadge" class="law-badge"></span>
+                </div>
+                <p id="billMeta" class="bill-meta"></p>
+              </article>
+
+              <article class="panel delegation-panel">
+                <div class="panel-heading">
+                  <h2>Your delegation</h2>
+                </div>
+                <div id="delegationCards" class="delegation-grid"></div>
+              </article>
+
+              <article class="panel votes-panel">
+                <div class="panel-heading">
+                  <h2>How they voted</h2>
+                </div>
+                <div id="voteTimeline" class="vote-timeline"></div>
+              </article>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

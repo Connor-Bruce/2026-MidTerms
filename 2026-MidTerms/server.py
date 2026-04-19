@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -36,6 +37,11 @@ CONGRESS_API_KEY = os.environ.get("CONGRESS_API_KEY", "").strip()
 OPENSECRETS_API_KEY = os.environ.get("OPENSECRETS_API_KEY", "").strip()
 USER_AGENT = "CivicVotesPrototype/1.0"
 CACHE_TTL_SECONDS = 60 * 30
+OPENSECRETS_SEARCH_ROOT = "https://www.opensecrets.org/search"
+LEGISLATORS_CURRENT_JSON_URL = "https://raw.githubusercontent.com/unitedstates/congress-legislators/gh-pages/legislators-current.json"
+INFLUENCE_ID_CACHE_TTL_SECONDS = 60 * 60 * 24
+CENSUS_ZIP_CROSSWALK_URL = "https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11920_zcta520_natl.txt"
+ZIP_CROSSWALK_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
 
 PASSAGE_ACTION_TERMS = (
     "passed",
@@ -203,6 +209,60 @@ PARTY_NAME_TO_ABBREV = {
     "Independent Democrat": "ID",
     "Libertarian": "L",
 }
+STATE_FIPS_TO_CODE = {
+    "01": "AL",
+    "02": "AK",
+    "04": "AZ",
+    "05": "AR",
+    "06": "CA",
+    "08": "CO",
+    "09": "CT",
+    "10": "DE",
+    "11": "DC",
+    "12": "FL",
+    "13": "GA",
+    "15": "HI",
+    "16": "ID",
+    "17": "IL",
+    "18": "IN",
+    "19": "IA",
+    "20": "KS",
+    "21": "KY",
+    "22": "LA",
+    "23": "ME",
+    "24": "MD",
+    "25": "MA",
+    "26": "MI",
+    "27": "MN",
+    "28": "MS",
+    "29": "MO",
+    "30": "MT",
+    "31": "NE",
+    "32": "NV",
+    "33": "NH",
+    "34": "NJ",
+    "35": "NM",
+    "36": "NY",
+    "37": "NC",
+    "38": "ND",
+    "39": "OH",
+    "40": "OK",
+    "41": "OR",
+    "42": "PA",
+    "44": "RI",
+    "45": "SC",
+    "46": "SD",
+    "47": "TN",
+    "48": "TX",
+    "49": "UT",
+    "50": "VT",
+    "51": "VA",
+    "53": "WA",
+    "54": "WV",
+    "55": "WI",
+    "56": "WY",
+}
+SUPPORTED_STATE_CODES = {code for code, _ in STATE_OPTIONS}
 
 app = Flask(__name__, static_folder=str(STATIC_DIR), static_url_path="")
 app.json.sort_keys = False
@@ -303,6 +363,108 @@ def normalize_district(value: str | None) -> str | None:
     if not digits:
         return None
     return str(int(digits))
+
+
+def normalize_zip_code(value: str | None) -> str | None:
+    if value is None:
+        return None
+    digits = re.sub(r"\D", "", value.strip())
+    if not digits:
+        return None
+    normalized = digits[:5]
+    if len(normalized) != 5:
+        raise ValueError("ZIP code must be 5 digits.")
+    return normalized
+
+
+def district_option_label(state: str, district: str) -> str:
+    normalized_district = normalize_district(district) or district
+    if normalized_district == "0":
+        return f"{state} AT-LARGE"
+    if normalized_district == "98":
+        return f"{state} DELEGATE"
+    return f"{state}-{normalized_district}"
+
+
+def slugify_opensecrets_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+
+
+@lru_cache(maxsize=1)
+def load_legislator_influence_index() -> dict[str, dict[str, str]]:
+    raw_data = fetch_text(LEGISLATORS_CURRENT_JSON_URL, cache_ttl=INFLUENCE_ID_CACHE_TTL_SECONDS)
+    items = json.loads(raw_data)
+    index: dict[str, dict[str, str]] = {}
+
+    for item in items:
+        identifier = item.get("id") or {}
+        bioguide_id = identifier.get("bioguide")
+        opensecrets_id = identifier.get("opensecrets")
+        if not bioguide_id or not opensecrets_id:
+            continue
+
+        name_data = item.get("name") or {}
+        full_name = " ".join(
+            piece
+            for piece in [
+                name_data.get("first"),
+                name_data.get("middle"),
+                name_data.get("last"),
+            ]
+            if piece
+        ).strip() or name_data.get("official_full") or ""
+
+        index[bioguide_id.upper()] = {
+            "opensecretsId": opensecrets_id,
+            "slug": slugify_opensecrets_name(full_name or name_data.get("official_full") or ""),
+        }
+
+    return index
+
+
+def build_opensecrets_search_url(member: dict[str, Any]) -> str:
+    query_parts: list[str] = []
+    display_name = member.get("displayName") or member.get("listName") or ""
+    if display_name:
+        query_parts.append(display_name)
+
+    state_code = (member.get("state") or "").upper()
+    district = normalize_district(member.get("district"))
+    chamber = (member.get("chamber") or "").lower()
+
+    if chamber == "senate":
+        if state_code:
+            query_parts.extend([state_code, "Senate"])
+    elif state_code and district:
+        if district == "0":
+            query_parts.extend([state_code, "at large"])
+        else:
+            query_parts.extend([state_code, district])
+    elif state_code:
+        query_parts.append(state_code)
+
+    query = " ".join(part for part in query_parts if part).strip()
+    return f"{OPENSECRETS_SEARCH_ROOT}?{urlencode({'q': query})}"
+
+
+def build_opensecrets_member_url(member: dict[str, Any]) -> str:
+    bioguide_id = (member.get("bioguideId") or "").upper()
+    try:
+        influence_record = load_legislator_influence_index().get(bioguide_id)
+    except Exception:
+        influence_record = None
+
+    if not influence_record:
+        return build_opensecrets_search_url(member)
+
+    slug = influence_record.get("slug") or slugify_opensecrets_name(
+        " ".join(piece for piece in [member.get("firstName"), member.get("lastName")] if piece)
+    )
+    opensecrets_id = influence_record.get("opensecretsId")
+    if not slug or not opensecrets_id:
+        return build_opensecrets_search_url(member)
+
+    return f"https://www.opensecrets.org/members-of-congress/{slug}/summary?{urlencode({'cid': opensecrets_id})}"
 
 
 def split_name(name: str | None) -> tuple[str | None, str | None]:
@@ -432,6 +594,72 @@ def fetch_all_congress_items(
         page_url = build_congress_url(next_url)
 
     return collected
+
+
+@lru_cache(maxsize=1)
+def load_zip_district_index() -> dict[str, list[dict[str, Any]]]:
+    text = fetch_text(CENSUS_ZIP_CROSSWALK_URL, cache_ttl=ZIP_CROSSWALK_CACHE_TTL_SECONDS).lstrip("\ufeff")
+    reader = csv.DictReader(text.splitlines(), delimiter="|")
+    grouped: dict[str, dict[tuple[str, str], dict[str, Any]]] = {}
+
+    for row in reader:
+        zip_code = (row.get("GEOID_ZCTA5_20") or "").strip()
+        congressional_geoid = (row.get("GEOID_CD119_20") or "").strip()
+        if not zip_code or len(congressional_geoid) != 4:
+            continue
+
+        state_code = STATE_FIPS_TO_CODE.get(congressional_geoid[:2])
+        if not state_code or state_code not in SUPPORTED_STATE_CODES:
+            continue
+
+        district_code = normalize_district(congressional_geoid[2:])
+        if district_code is None:
+            continue
+
+        land_part = int((row.get("AREALAND_PART") or "0").strip() or "0")
+        water_part = int((row.get("AREAWATER_PART") or "0").strip() or "0")
+        coverage_value = land_part or water_part
+
+        bucket = grouped.setdefault(zip_code, {})
+        key = (state_code, district_code)
+        entry = bucket.setdefault(
+            key,
+            {
+                "state": state_code,
+                "district": district_code,
+                "coverageValue": 0,
+            },
+        )
+        entry["coverageValue"] += coverage_value
+
+    index: dict[str, list[dict[str, Any]]] = {}
+    for zip_code, bucket in grouped.items():
+        options = list(bucket.values())
+        total_coverage = sum(item["coverageValue"] for item in options) or 1
+        options.sort(key=lambda item: (-item["coverageValue"], item["state"], int(item["district"])))
+        index[zip_code] = [
+            {
+                "state": option["state"],
+                "district": option["district"],
+                "label": district_option_label(option["state"], option["district"]),
+                "coveragePercent": max(1, round((option["coverageValue"] / total_coverage) * 100)),
+            }
+            for option in options
+        ]
+
+    return index
+
+
+def lookup_zip_districts(zip_code: str) -> list[dict[str, Any]]:
+    normalized_zip = normalize_zip_code(zip_code)
+    if not normalized_zip:
+        raise ValueError("ZIP code must be 5 digits.")
+
+    options = load_zip_district_index().get(normalized_zip, [])
+    if not options:
+        raise ValueError("I could not map that ZIP code to a current congressional district.")
+
+    return [dict(option) for option in options]
 
 
 # --- 3. BILL SEARCH ---
@@ -810,9 +1038,51 @@ def fetch_representatives(state: str, district: str | None) -> list[dict[str, An
         hydrated = hydrate_member(member)
         chamber = hydrated.get("chamber")
         hydrated["roleLabel"] = "Senator" if (chamber or "").lower() == "senate" else "Representative"
+        hydrated["financeUrl"] = build_opensecrets_member_url(hydrated)
         enriched.append(hydrated)
 
     return enriched
+
+
+def build_representatives_payload(
+    state: str | None = None,
+    district: str | None = None,
+    zip_code: str | None = None,
+) -> dict[str, Any]:
+    normalized_zip = normalize_zip_code(zip_code) if zip_code else None
+    normalized_state = (state or "").strip().upper() or None
+    normalized_district = normalize_district(district)
+    district_options: list[dict[str, Any]] = []
+
+    if normalized_zip:
+        district_options = lookup_zip_districts(normalized_zip)
+        selected_option = None
+        if normalized_state or normalized_district:
+            for option in district_options:
+                if normalized_state and option["state"] != normalized_state:
+                    continue
+                if normalized_district and option["district"] != normalized_district:
+                    continue
+                selected_option = option
+                break
+
+        selected_option = selected_option or district_options[0]
+        normalized_state = selected_option["state"]
+        normalized_district = selected_option["district"]
+
+    if not normalized_state:
+        raise ValueError("Choose a state and district, or enter a 5-digit ZIP code first.")
+
+    representatives = fetch_representatives(normalized_state, normalized_district)
+    return {
+        "lookupMode": "zip" if normalized_zip else "manual",
+        "zip": normalized_zip,
+        "state": normalized_state,
+        "district": normalized_district,
+        "districtOptions": district_options,
+        "hasMultipleDistrictMatches": len(district_options) > 1,
+        "representatives": representatives,
+    }
 
 
 def member_served_in_context(
@@ -1203,6 +1473,12 @@ def index() -> Any:
     return send_from_directory(STATIC_DIR, "index.html")
 
 
+@app.get("/billblaster-demo")
+@app.get("/billblaster-demo/")
+def billblaster_demo() -> Any:
+    return send_from_directory(STATIC_DIR, "billblaster_demo.html")
+
+
 @app.get("/api/config")
 def api_config() -> Any:
     return jsonify(
@@ -1222,6 +1498,19 @@ def api_search_bills() -> Any:
         query = optional_query_value("q") or ""
         results = featured_laws() if (featured_only or "").lower() in {"1", "true", "yes"} else search_laws(query)
         return jsonify({"results": results})
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
+
+
+@app.get("/api/representatives")
+def api_representatives() -> Any:
+    try:
+        payload = build_representatives_payload(
+            state=optional_query_value("state"),
+            district=optional_query_value("district"),
+            zip_code=optional_query_value("zip"),
+        )
+        return jsonify(payload)
     except Exception as exc:  # noqa: BLE001
         return jsonify({"error": str(exc)}), error_status(exc)
 

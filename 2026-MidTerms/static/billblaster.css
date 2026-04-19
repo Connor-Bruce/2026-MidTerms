@@ -1,0 +1,211 @@
+@import url("/style.css?v=20260419");
+
+:root {
+  --billblaster-red: #c1121f;
+  --billblaster-blue: #133c8b;
+  --billblaster-black: #000000;
+  --billblaster-white: #ffffff;
+}
+
+body.billblaster-demo {
+  background: var(--billblaster-white);
+  color: var(--billblaster-black);
+}
+
+.billblaster-demo .page-shell {
+  padding-top: 2rem;
+}
+
+.demo-banner {
+  width: 100%;
+  padding: 0.9rem 2rem;
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+  font-family: var(--mono-stack);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.billblaster-logo {
+  flex: 0 0 4.8rem;
+  min-height: 4.8rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  border: 1px solid var(--billblaster-black);
+  background: var(--billblaster-red);
+  color: var(--billblaster-white);
+}
+
+.billblaster-logo span {
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.billblaster-logo span + span {
+  border-left: 1px solid var(--billblaster-black);
+  background: var(--billblaster-blue);
+}
+
+.billblaster-demo .hero h1,
+.billblaster-demo .panel h2,
+.billblaster-demo .empty-panel h2,
+.billblaster-demo .vote-card h3,
+.billblaster-demo .delegate-card h3,
+.billblaster-demo .result-card strong {
+  letter-spacing: 0.16em;
+}
+
+.billblaster-demo .eyebrow,
+.billblaster-demo .hero-card-label,
+.billblaster-demo .result-label,
+.billblaster-demo .featured-tag,
+.billblaster-demo .search-section-label,
+.billblaster-demo .vote-chamber,
+.billblaster-demo .vote-roll,
+.billblaster-demo .delegate-role,
+.billblaster-demo .member-role {
+  color: var(--billblaster-blue);
+}
+
+.billblaster-demo .hero-copy,
+.billblaster-demo .hero-card,
+.billblaster-demo .panel,
+.billblaster-demo .delegate-card,
+.billblaster-demo .vote-card,
+.billblaster-demo .result-card,
+.billblaster-demo .search-empty,
+.billblaster-demo .inline-note {
+  border-color: var(--billblaster-black);
+}
+
+.billblaster-demo .status-message {
+  color: var(--billblaster-blue);
+  opacity: 0.88;
+}
+
+.billblaster-demo .location-button {
+  background: var(--billblaster-red);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .location-button:hover,
+.billblaster-demo .location-button:focus-visible {
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .ghost-button {
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .ghost-button:hover,
+.billblaster-demo .ghost-button:focus-visible {
+  background: var(--billblaster-white);
+  color: var(--billblaster-black);
+}
+
+.billblaster-demo .ghost-button-secondary {
+  background: var(--billblaster-white);
+  color: var(--billblaster-black);
+  border-color: var(--billblaster-black);
+}
+
+.billblaster-demo .ghost-button-secondary:hover,
+.billblaster-demo .ghost-button-secondary:focus-visible {
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .pill,
+.billblaster-demo .law-badge,
+.billblaster-demo .featured-tag,
+.billblaster-demo .vote-badge {
+  border-color: var(--billblaster-black);
+}
+
+.billblaster-demo .featured-tag,
+.billblaster-demo .law-badge,
+.billblaster-demo .vote-yes {
+  background: var(--billblaster-red);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .vote-no {
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .contact-link {
+  color: var(--billblaster-blue);
+}
+
+.billblaster-demo .contact-link:hover,
+.billblaster-demo .contact-link:focus-visible,
+.billblaster-demo .source-link:hover,
+.billblaster-demo .source-link:focus-visible {
+  color: var(--billblaster-black);
+}
+
+.billblaster-demo .result-card:hover,
+.billblaster-demo .result-card:focus-visible {
+  background: var(--billblaster-blue);
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .result-card:hover .result-label,
+.billblaster-demo .result-card:hover .result-meta,
+.billblaster-demo .result-card:hover .result-arrow,
+.billblaster-demo .result-card:focus-visible .result-label,
+.billblaster-demo .result-card:focus-visible .result-meta,
+.billblaster-demo .result-card:focus-visible .result-arrow {
+  color: var(--billblaster-white);
+}
+
+.billblaster-demo .demo-controls-grid {
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, auto) minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+}
+
+.billblaster-demo #districtSelectField {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1120px) {
+  .billblaster-demo .demo-controls-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .brand-lockup {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .demo-banner {
+    padding: 0.8rem 1rem;
+  }
+
+  .billblaster-demo .demo-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billblaster-demo #districtSelectField {
+    grid-column: auto;
+  }
+
+  .brand-lockup {
+    gap: 1rem;
+  }
+}
