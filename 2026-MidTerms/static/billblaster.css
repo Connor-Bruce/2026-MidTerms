@@ -35,6 +35,10 @@ body.billblaster-demo,
   padding-top: 2rem;
 }
 
+.billblaster-demo .demo-hero {
+  grid-template-columns: 1fr;
+}
+
 .demo-banner {
   width: 100%;
   padding: 0.9rem 2rem;
@@ -146,6 +150,18 @@ body.billblaster-demo,
 .billblaster-demo .inline-note {
   color: var(--billblaster-white);
   font-family: var(--mono-stack);
+}
+
+.billblaster-demo .alignment-explainer {
+  margin: 1.25rem 0 0;
+  max-width: 78ch;
+  color: #888888;
+  font-family: var(--mono-stack);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .billblaster-demo .member-note {
