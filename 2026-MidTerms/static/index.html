@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>2026 MidTerms V1.1</title>
-    <link rel="stylesheet" href="/style.css?v=20260417" />
+    <link rel="stylesheet" href="/style.css?v=20260419g" />
   </head>
   <body>
     <div class="page-shell">
@@ -27,13 +27,17 @@
       </header>
 
       <main class="workspace">
-        <section class="panel controls-panel">
-          <div class="controls-grid">
-            <label class="field">
+        <section class="panel search-bar-panel search-hub">
+          <div class="search-bar-inner">
+            <label class="field search-field">
               <span>Bill search</span>
               <input id="billSearch" type="search" placeholder="Try H.R. 1 or budget" autocomplete="off" />
             </label>
+          </div>
+        </section>
 
+        <section class="panel controls-panel location-hub">
+          <div class="controls-grid">
             <label class="field">
               <span>State</span>
               <select id="stateSelect"></select>
@@ -88,6 +92,23 @@
                 <h3>THE VOTE.</h3>
                 <p class="info-copy">
                   V1 tracks every major roll call in the House and Senate. Don't listen to what they say on the news; look at how they voted on the floor. This is the only record that matters when you head to the polls.
+                </p>
+              </div>
+            </article>
+
+            <article class="info-section">
+              <div class="info-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 16h24"></path>
+                  <path d="M12 24h24"></path>
+                  <path d="M12 32h16"></path>
+                  <path d="M36 12v24"></path>
+                </svg>
+              </div>
+              <div class="info-copy-block">
+                <h3>THE ALIGNMENT.</h3>
+                <p class="info-copy info-copy-balanced">
+                  This metric provides an objective view of legislative alignment with the current administration, offering a transparent record for voters across the political spectrum to assess consistency and independence.
                 </p>
               </div>
             </article>

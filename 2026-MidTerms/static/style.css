@@ -1,7 +1,12 @@
 :root {
-  --bg: #ffffff;
-  --text: #000000;
-  --border: #000000;
+  --bg: #000000;
+  --text: #ffffff;
+  --border: #ffffff;
+  --surface: #000000;
+  --muted: #b8b8b8;
+  --hover: #2d2d2d;
+  --democrat: #0044ff;
+  --republican: #ff0000;
   --font-stack: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono-stack: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
@@ -12,19 +17,23 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
   min-height: 100%;
-  background: #ffffff;
-  color: #000000;
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-stack);
   font-weight: 700;
   line-height: 1.35;
 }
 
 body {
-  background: #ffffff;
+  background: var(--bg);
 }
 
 button,
@@ -32,7 +41,7 @@ input,
 select,
 textarea {
   font: inherit;
-  color: #000000;
+  color: var(--text);
 }
 
 button {
@@ -75,8 +84,8 @@ a {
 .result-card,
 .search-empty,
 .inline-note {
-  background: #ffffff;
-  border: 1px solid #000000;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
 }
@@ -136,7 +145,7 @@ a {
 .contact-link,
 .source-link {
   margin: 0;
-  color: #000000;
+  color: var(--text);
 }
 
 .subcopy {
@@ -164,6 +173,7 @@ a {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.18em;
+  color: var(--muted);
 }
 
 .hero-list {
@@ -174,7 +184,7 @@ a {
 
 .controls-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) minmax(180px, auto);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(180px, auto);
   gap: 1.25rem;
   align-items: end;
 }
@@ -192,7 +202,7 @@ a {
   width: 100%;
   min-height: 4.25rem;
   padding: 0 1.2rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--border);
   border-radius: 0;
   outline: none;
   box-shadow: none;
@@ -200,17 +210,17 @@ a {
 
 .field input,
 .field select {
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .field input::placeholder {
-  color: #000000;
+  color: var(--muted);
   opacity: 1;
 }
 
 .field input:focus,
 .field select:focus {
-  outline: 1px solid #000000;
+  outline: 1px solid var(--border);
   outline-offset: 0;
 }
 
@@ -238,6 +248,7 @@ a {
   line-height: 1.5;
   text-transform: uppercase;
   opacity: 0.72;
+  color: var(--muted);
 }
 
 .location-field {
@@ -250,8 +261,8 @@ a {
 
 .ghost-button,
 .location-button {
-  background: #000000;
-  color: #ffffff;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -265,8 +276,8 @@ a {
 .location-button:focus-visible,
 .result-card:hover,
 .result-card:focus-visible {
-  background: #ffffff;
-  color: #000000;
+  background: var(--hover);
+  color: var(--text);
   outline: none;
 }
 
@@ -276,14 +287,14 @@ a {
 }
 
 .ghost-button-secondary {
-  background: #ffffff;
-  color: #000000;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .ghost-button-secondary:hover,
 .ghost-button-secondary:focus-visible {
-  background: #000000;
-  color: #ffffff;
+  background: var(--hover);
+  color: var(--text);
 }
 
 .results-layout {
@@ -320,10 +331,10 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0.7rem 0.9rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--border);
   border-radius: 0;
-  background: #ffffff;
-  color: #000000;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .result-card {
@@ -363,7 +374,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--border);
 }
 
 .result-arrow {
@@ -383,7 +394,7 @@ a {
 .result-card:focus-visible .result-meta,
 .result-card:focus-visible .result-label,
 .result-card:focus-visible .result-arrow {
-  color: #000000;
+  color: var(--text);
 }
 
 .detail-hidden {
@@ -415,7 +426,7 @@ a {
 
 .info-sections {
   display: grid;
-  border-top: 1px solid #000000;
+  border-top: 1px solid var(--border);
 }
 
 .info-section {
@@ -423,7 +434,7 @@ a {
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 1.25rem;
   padding: 1.35rem 0;
-  border-bottom: 1px solid #000000;
+  border-bottom: 1px solid var(--border);
 }
 
 .info-icon {
@@ -476,7 +487,7 @@ a {
   justify-content: center;
   min-height: 3rem;
   padding: 0 1rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--border);
   font-family: var(--mono-stack);
   font-size: 0.76rem;
   font-weight: 800;
@@ -486,8 +497,13 @@ a {
 
 .info-action-link:hover,
 .info-action-link:focus-visible {
-  background: #000000;
-  color: #ffffff;
+  background: var(--hover);
+  color: var(--text);
+}
+
+.info-copy-balanced {
+  text-transform: none;
+  letter-spacing: 0.03em;
 }
 
 .bill-panel h2 {
@@ -501,6 +517,52 @@ a {
 .delegate-role,
 .member-role {
   margin-bottom: 0.5rem;
+}
+
+.delegate-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.delegate-name-group {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.delegate-name-group h3 {
+  min-width: 0;
+}
+
+.party-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  padding: 0 0.35rem;
+  border: 1px solid currentColor;
+  font-family: var(--mono-stack);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.party-pill.party-democrat {
+  color: var(--democrat);
+}
+
+.party-pill.party-republican {
+  color: var(--republican);
+}
+
+.party-pill.party-independent {
+  color: var(--muted);
 }
 
 .delegate-meta,
@@ -560,17 +622,23 @@ a {
   cursor: default;
 }
 
+.delegate-card:hover,
+.delegate-card:focus-visible,
 .delegate-card-pinned:hover,
 .delegate-card-pinned:focus-visible {
-  background: #ffffff;
-  color: #000000;
+  background: var(--hover);
+  color: var(--text);
 }
 
+.delegate-card:hover .delegate-meta,
+.delegate-card:hover .delegate-role,
+.delegate-card:hover .contact-link,
+.delegate-card:hover .muted,
 .delegate-card-pinned:hover .delegate-meta,
 .delegate-card-pinned:hover .delegate-role,
 .delegate-card-pinned:hover .contact-link,
 .delegate-card-pinned:hover .muted {
-  color: #000000;
+  color: var(--text);
 }
 
 .vote-card {
@@ -595,7 +663,7 @@ a {
   align-items: center;
   gap: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #000000;
+  border-top: 1px solid var(--border);
 }
 
 .member-name {
@@ -629,8 +697,33 @@ a {
 .vote-no,
 .vote-present,
 .vote-neutral {
-  background: #ffffff;
-  color: #000000;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.search-hub {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.search-bar-panel {
+  width: min(760px, 100%);
+  margin: 0 auto 1.75rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.search-bar-inner {
+  display: flex;
+  justify-content: center;
+}
+
+.search-field {
+  width: 100%;
+}
+
+.location-hub {
+  width: min(1120px, 100%);
+  margin: 0 auto;
 }
 
 @media (max-width: 1120px) {
@@ -679,6 +772,7 @@ a {
 
   .helper-row,
   .panel-heading,
+  .delegate-heading-row,
   .member-vote,
   .result-card-top {
     flex-direction: column;

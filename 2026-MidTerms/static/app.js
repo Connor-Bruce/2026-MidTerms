@@ -146,6 +146,8 @@ function showDefaultEmptyState() {
     return;
   }
   elements.billDetail.classList.add("detail-hidden");
+  elements.emptyState.style.display = "";
+  elements.emptyState.hidden = false;
   elements.emptyState.classList.remove("detail-hidden");
   setEmptyStateCopy(DEFAULT_EMPTY_STATE_TITLE, DEFAULT_EMPTY_STATE_BODY);
 }
@@ -155,11 +157,15 @@ function showLocationReadyEmptyState() {
     return;
   }
   elements.billDetail.classList.add("detail-hidden");
+  elements.emptyState.style.display = "";
+  elements.emptyState.hidden = false;
   elements.emptyState.classList.remove("detail-hidden");
   setEmptyStateCopy(LOCATION_READY_EMPTY_STATE_TITLE, LOCATION_READY_EMPTY_STATE_BODY);
 }
 
 function hideInstructionState() {
+  elements.emptyState.style.display = "none";
+  elements.emptyState.hidden = true;
   elements.emptyState.classList.add("detail-hidden");
   setEmptyStateCopy("", "");
 }
@@ -314,6 +320,48 @@ function representativeLocationLabel(stateCode, district) {
   return district ? `${stateCode}-${district}` : stateCode;
 }
 
+function normalizePartyCode(value) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "D" || normalized === "DEMOCRAT" || normalized === "DEMOCRATIC") {
+    return "D";
+  }
+  if (normalized === "R" || normalized === "REPUBLICAN") {
+    return "R";
+  }
+  return normalized || "";
+}
+
+function partyToneClass(partyCode) {
+  if (partyCode === "D") {
+    return "party-democrat";
+  }
+  if (partyCode === "R") {
+    return "party-republican";
+  }
+  return "party-independent";
+}
+
+function displayMemberName(member) {
+  const displayName = String(member.displayName || "").trim();
+  if (displayName) {
+    return displayName;
+  }
+
+  const firstName = String(member.firstName || "").trim();
+  const lastName = String(member.lastName || "").trim();
+  const combined = `${firstName} ${lastName}`.trim();
+  if (combined) {
+    return combined;
+  }
+
+  const listName = String(member.listName || "").trim();
+  if (listName) {
+    return listName;
+  }
+
+  return "Unknown member";
+}
+
 function escapeAttribute(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -349,6 +397,11 @@ function buildContactMarkup(url, label, options = {}) {
 }
 
 function buildRepresentativeCardMarkup(member, extraLabel = "") {
+  const displayName = displayMemberName(member);
+  const partyCode = normalizePartyCode(member.party);
+  const partyMarkup = partyCode
+    ? `<span class="party-pill ${partyToneClass(partyCode)}" aria-label="Party ${partyCode}">(${partyCode})</span>`
+    : "";
   const phoneMarkup = buildContactMarkup(
     member.phone ? `tel:${member.phone}` : "",
     "Phone",
@@ -356,7 +409,7 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
       newTab: false,
       title: member.phone || "",
       ariaLabel: member.phone
-        ? `Call ${member.displayName || member.listName || "this office"} at ${member.phone}`
+        ? `Call ${displayName || "this office"} at ${member.phone}`
         : "",
       fallback: "Phone unavailable",
     }
@@ -367,20 +420,25 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
     newTab: !member.email,
     title: member.email || member.website || "",
     ariaLabel: member.email
-      ? `Email ${member.displayName || member.listName || "this office"}`
-      : `Open official contact page for ${member.displayName || member.listName || "this office"}`,
+      ? `Email ${displayName || "this office"}`
+      : `Open official contact page for ${displayName || "this office"}`,
     fallback: member.email ? "Email unavailable" : "Contact unavailable",
   });
   const financeMarkup = buildContactMarkup(member.financeUrl || "", "OpenSecrets", {
     title: "Open campaign finance profile on OpenSecrets",
-    ariaLabel: `Open OpenSecrets finance data for ${member.displayName || member.listName || "this office"}`,
+    ariaLabel: `Open OpenSecrets finance data for ${displayName || "this office"}`,
     fallback: "Finance data unavailable",
   });
   const locationLabel = representativeLocationLabel(member.state, member.district);
 
   return `
     <p class="delegate-role">${member.roleLabel || "Representative"}</p>
-    <h3>${member.displayName || member.listName || "Unknown member"}</h3>
+    <div class="delegate-heading-row">
+      <div class="delegate-name-group">
+        <h3>${displayName}</h3>
+        ${partyMarkup}
+      </div>
+    </div>
     <p class="delegate-meta">${member.party || "Unknown party"}${locationLabel ? ` · ${locationLabel}` : ""}</p>
     ${extraLabel ? `<p class="delegate-select-label">${extraLabel}</p>` : ""}
     <div class="contact-row">
@@ -901,9 +959,7 @@ function wireEvents() {
     state.suppressLocationEvents = false;
     renderDistrictSelector([], "", "");
     resetRepresentativesModule();
-    elements.billDetail.classList.add("detail-hidden");
-    elements.emptyState.classList.remove("detail-hidden");
-    setEmptyStateCopy(DEFAULT_EMPTY_STATE_TITLE, DEFAULT_EMPTY_STATE_BODY);
+    showDefaultEmptyState();
     runSearch();
   });
 

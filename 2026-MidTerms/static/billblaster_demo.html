@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BillBlaster x V1 Demo</title>
-    <link rel="stylesheet" href="/billblaster.css?v=20260419f" />
+    <link rel="stylesheet" href="/billblaster.css?v=20260419g" />
   </head>
   <body class="billblaster-demo">
     <div class="demo-banner">BILLBLASTER x V1</div>
@@ -392,29 +392,43 @@
         if (!headingRow) {
           headingRow = document.createElement("div");
           headingRow.className = "delegate-heading-row";
+          const delegateMeta = card.querySelector(".delegate-meta");
+          memberName.parentNode.insertBefore(headingRow, delegateMeta || memberName);
+        }
 
+        if (!nameGroup) {
           nameGroup = document.createElement("div");
           nameGroup.className = "delegate-name-group";
+          headingRow.prepend(nameGroup);
+        }
 
+        if (!partyPill) {
           partyPill = document.createElement("span");
           partyPill.className = "party-pill";
           partyPill.setAttribute("aria-hidden", "true");
+          nameGroup.prepend(partyPill);
+        }
 
+        if (!alignmentBlock) {
           alignmentBlock = document.createElement("div");
           alignmentBlock.className = "alignment-block";
+          headingRow.append(alignmentBlock);
+        }
 
+        if (!alignmentScore) {
           alignmentScore = document.createElement("p");
           alignmentScore.className = "alignment-score";
+          alignmentBlock.append(alignmentScore);
+        }
 
+        if (!alignmentIndicator) {
           alignmentIndicator = document.createElement("p");
           alignmentIndicator.className = "alignment-indicator";
+          alignmentBlock.append(alignmentIndicator);
+        }
 
-          alignmentBlock.append(alignmentScore, alignmentIndicator);
-          const originalParent = memberName.parentNode;
-          const delegateMeta = card.querySelector(".delegate-meta");
-          nameGroup.append(partyPill, memberName);
-          headingRow.append(nameGroup, alignmentBlock);
-          originalParent.insertBefore(headingRow, delegateMeta || null);
+        if (!nameGroup.contains(memberName)) {
+          nameGroup.append(memberName);
         }
 
         memberName.textContent = primaryName;
