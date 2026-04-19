@@ -136,6 +136,7 @@ a {
 .subcopy,
 .status-message,
 .result-meta,
+.result-description,
 .delegate-meta,
 .vote-meta,
 .vote-description,
@@ -377,6 +378,17 @@ a {
   border: 1px solid var(--border);
 }
 
+.result-description {
+  max-width: 70ch;
+  font-family: var(--mono-stack);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: none;
+}
+
 .result-arrow {
   font-size: 0.75rem;
   font-weight: 900;
@@ -389,9 +401,11 @@ a {
 }
 
 .result-card:hover .result-meta,
+.result-card:hover .result-description,
 .result-card:hover .result-label,
 .result-card:hover .result-arrow,
 .result-card:focus-visible .result-meta,
+.result-card:focus-visible .result-description,
 .result-card:focus-visible .result-label,
 .result-card:focus-visible .result-arrow {
   color: var(--text);

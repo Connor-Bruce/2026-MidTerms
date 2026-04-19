@@ -139,6 +139,7 @@ body.billblaster-demo,
 .billblaster-demo .subcopy,
 .billblaster-demo .status-message,
 .billblaster-demo .result-meta,
+.billblaster-demo .result-description,
 .billblaster-demo .delegate-meta,
 .billblaster-demo .vote-meta,
 .billblaster-demo .vote-description,
@@ -166,6 +167,10 @@ body.billblaster-demo,
   line-height: 1.6;
   letter-spacing: 0.04em;
   text-transform: none;
+}
+
+.billblaster-demo .result-description {
+  color: var(--billblaster-grey);
 }
 
 .billblaster-demo .search-hub {
@@ -408,9 +413,11 @@ body.billblaster-demo,
 
 .billblaster-demo .result-card:hover .result-label,
 .billblaster-demo .result-card:hover .result-meta,
+.billblaster-demo .result-card:hover .result-description,
 .billblaster-demo .result-card:hover .result-arrow,
 .billblaster-demo .result-card:focus-visible .result-label,
 .billblaster-demo .result-card:focus-visible .result-meta,
+.billblaster-demo .result-card:focus-visible .result-description,
 .billblaster-demo .result-card:focus-visible .result-arrow {
   color: var(--billblaster-white);
 }

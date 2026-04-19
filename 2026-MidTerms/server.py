@@ -56,38 +56,31 @@ MAJOR_2024_BILL_TITLES = (
 )
 FEATURED_BILL_SPECS = (
     {
-        "congress": 118,
+        "congress": 119,
         "billType": "hr",
-        "billNumber": "2882",
-        "titleOverride": "Further Consolidated Appropriations Act, 2024",
+        "billNumber": "1",
+        "titleOverride": "One Big Beautiful Bill Act of 2025",
+        "featuredLabel": "RECOMMENDED",
+        "featuredDescription": "The foundational budget and tax-cut package of the current administration. Tracks major shifts in health care funding, social safety nets, and federal tax structures.",
     },
     {
-        "congress": 118,
+        "congress": 119,
         "billType": "hr",
-        "billNumber": "8070",
-        "titleOverride": "National Defense Authorization Act for Fiscal Year 2025",
+        "billNumber": "4405",
+        "titleOverride": "Epstein Files Transparency Act",
+        "featuredLabel": "RECOMMENDED",
+        "featuredDescription": "A records-disclosure measure requiring DOJ to publish searchable, downloadable unclassified Epstein investigation files and report what was released or withheld.",
     },
     {
-        "congress": 118,
+        "congress": 119,
         "billType": "hr",
-        "billNumber": "7024",
-        "titleOverride": "Tax Relief for American Families and Workers Act of 2024",
-    },
-    {
-        "congress": 117,
-        "billType": "hr",
-        "billNumber": "3684",
-        "titleOverride": "Infrastructure Investment and Jobs Act",
-    },
-    {
-        "congress": 117,
-        "billType": "hr",
-        "billNumber": "4521",
-        "titleOverride": "Strategic Competition Act (Historical Comparison)",
-        "featuredNote": "Closest official Congress.gov strategic competition bill with House and Senate roll calls.",
+        "billNumber": "22",
+        "titleOverride": "Safeguard American Voter Eligibility (SAVE) Act",
+        "featuredLabel": "RECOMMENDED",
+        "featuredDescription": "The central election-integrity bill in the 119th Congress. Requires documentary proof of citizenship for federal voter registration and tighter voter-roll verification.",
     },
 )
-FEATURED_BILL_LIMIT = 5
+FEATURED_BILL_LIMIT = 3
 FUNDING_SEGMENTS = (
     {
         "key": "energy",
@@ -726,9 +719,10 @@ def apply_featured_metadata(summary: dict[str, Any]) -> dict[str, Any]:
 
     enriched = dict(summary)
     enriched["featured"] = True
-    enriched["featuredLabel"] = "FEATURED"
+    enriched["featuredLabel"] = featured_spec.get("featuredLabel") or "FEATURED"
     enriched["featuredOrder"] = featured_spec["featuredOrder"]
     enriched["featuredNote"] = featured_spec.get("featuredNote")
+    enriched["featuredDescription"] = featured_spec.get("featuredDescription")
     if featured_spec.get("titleOverride"):
         enriched["officialTitle"] = summary["title"]
         enriched["title"] = featured_spec["titleOverride"]

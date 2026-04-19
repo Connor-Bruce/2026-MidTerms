@@ -607,6 +607,9 @@ function renderSearchResults(results) {
       const badgeMarkup = result.featured
         ? `<span class="featured-tag">${result.featuredLabel || "FEATURED"}</span>`
         : "";
+      const descriptionMarkup = result.featuredDescription
+        ? `<span class="result-description">${result.featuredDescription}</span>`
+        : "";
       const detailLabel = result.lawNumber
         ? result.lawNumber
         : `${result.congressLabel || `${result.congress}th`} Congress`;
@@ -626,6 +629,7 @@ function renderSearchResults(results) {
           <span class="result-arrow" aria-hidden="true">View</span>
         </div>
         <strong>${result.title}</strong>
+        ${descriptionMarkup}
         <span class="result-meta">${result.latestActionDate || result.introducedDate || "Unknown date"} · ${detailLabel}</span>
       `;
       button.addEventListener("click", () => {
@@ -637,7 +641,7 @@ function renderSearchResults(results) {
   };
 
   if (featuredResults.length) {
-    appendSection("FEATURED BILLS", featuredResults);
+    appendSection("RECOMMENDED BILLS", featuredResults);
   }
 
   appendSection(featuredResults.length && standardResults.length ? "MATCHES" : "", standardResults);
