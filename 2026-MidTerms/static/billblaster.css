@@ -173,6 +173,26 @@ body.billblaster-demo,
   margin: 0 auto;
 }
 
+.billblaster-demo .search-bar-panel {
+  width: min(760px, 100%);
+  margin: 0 auto 1.75rem;
+  padding: 1.5rem 1.75rem;
+}
+
+.billblaster-demo .search-bar-inner {
+  display: flex;
+  justify-content: center;
+}
+
+.billblaster-demo .search-field {
+  width: 100%;
+}
+
+.billblaster-demo .location-hub {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
 .billblaster-demo .member-note {
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -455,7 +475,7 @@ body.billblaster-demo,
 }
 
 .billblaster-demo .demo-controls-grid {
-  grid-template-columns: minmax(220px, 1fr) minmax(180px, auto) minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, auto) repeat(2, minmax(0, 1fr));
 }
 
 .billblaster-demo #districtSelectField {

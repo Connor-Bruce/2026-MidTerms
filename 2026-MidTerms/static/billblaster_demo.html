@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BillBlaster x V1 Demo</title>
-    <link rel="stylesheet" href="/billblaster.css?v=20260419e" />
+    <link rel="stylesheet" href="/billblaster.css?v=20260419f" />
   </head>
   <body class="billblaster-demo">
     <div class="demo-banner">BILLBLASTER x V1</div>
@@ -23,7 +23,16 @@
       </header>
 
       <main class="workspace">
-        <section class="panel controls-panel search-hub">
+        <section class="panel search-bar-panel search-hub">
+          <div class="search-bar-inner">
+            <label class="field search-field">
+              <span>Bill search</span>
+              <input id="billSearch" type="search" placeholder="Try H.R. 2882 or budget" autocomplete="off" />
+            </label>
+          </div>
+        </section>
+
+        <section class="panel controls-panel location-hub">
           <div class="controls-grid demo-controls-grid">
             <label class="field">
               <span>ZIP code</span>
@@ -34,11 +43,6 @@
               <span>Locate</span>
               <button id="useLocationButton" class="location-button" type="button">Locate</button>
             </div>
-
-            <label class="field">
-              <span>Bill search</span>
-              <input id="billSearch" type="search" placeholder="Try H.R. 2882 or budget" autocomplete="off" />
-            </label>
 
             <label class="field">
               <span>State</span>
