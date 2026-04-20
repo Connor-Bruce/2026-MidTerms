@@ -303,6 +303,7 @@ body.billblaster-demo,
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .billblaster-demo .delegate-current-vote-note {
@@ -443,18 +444,22 @@ body.billblaster-demo,
   color: var(--billblaster-red);
 }
 
-.billblaster-demo .vote-yes,
-.billblaster-demo .vote-present,
-.billblaster-demo .vote-neutral {
-  background: var(--billblaster-matte-grey);
-  color: var(--billblaster-white);
+.billblaster-demo .vote-badge {
+  background: var(--billblaster-black);
   border-color: var(--billblaster-border);
 }
 
+.billblaster-demo .vote-yes {
+  color: #00ff00;
+}
+
 .billblaster-demo .vote-no {
-  background: var(--billblaster-red);
-  color: var(--billblaster-white);
-  border-color: var(--billblaster-red);
+  color: #ff0000;
+}
+
+.billblaster-demo .vote-present,
+.billblaster-demo .vote-neutral {
+  color: #888888;
 }
 
 .billblaster-demo .contact-link,

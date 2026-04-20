@@ -795,6 +795,7 @@ a {
   font-weight: 900;
   letter-spacing: 0.16em;
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .delegate-current-vote-note {
@@ -880,6 +881,8 @@ a {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  background: #000000;
+  border-color: var(--border);
 }
 
 .vote-icon {
@@ -892,12 +895,17 @@ a {
   font-weight: 900;
 }
 
-.vote-yes,
-.vote-no,
+.vote-yes {
+  color: #00ff00;
+}
+
+.vote-no {
+  color: #ff0000;
+}
+
 .vote-present,
 .vote-neutral {
-  background: var(--surface);
-  color: var(--text);
+  color: #888888;
 }
 
 .search-hub {
