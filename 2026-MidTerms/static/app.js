@@ -388,48 +388,25 @@ function trumpScoreToneClass(score) {
   return "alignment-score-mixed";
 }
 
-function trumpScoreIndicatorClass(score) {
-  if (score === null) {
-    return "alignment-indicator-unavailable";
-  }
-  if (score >= 80) {
-    return "alignment-indicator-in";
-  }
-  if (score < 25) {
-    return "alignment-indicator-breaking";
-  }
-  return "alignment-indicator-mixed";
-}
-
-function trumpScoreIndicatorText(score) {
-  if (score === null) {
-    return "NO SCORE";
-  }
-  if (score >= 80) {
-    return "IN ALIGNMENT";
-  }
-  if (score < 25) {
-    return "AGAINST";
-  }
-  return "MIXED RECORD";
-}
-
 function buildTrumpScoreMarkup(member) {
   const score = normalizedTrumpScore(member);
-  const scoreValue = score === null ? "NO DATA" : `${score}%`;
+  const scoreValue = member?.trumpScore?.scoreLabel || (score === null ? "NO DATA" : `${score}%`);
+  const sourceUrl = member?.trumpScore?.methodologyUrl || "https://votehub.com/trump-score";
   const alignedVotes = member?.trumpScore?.alignedVotes;
   const votesConsidered = member?.trumpScore?.votesConsidered;
   const title = Number.isFinite(alignedVotes) && Number.isFinite(votesConsidered) && votesConsidered > 0
     ? `${alignedVotes} of ${votesConsidered} tracked 119th Congress votes were cast with Trump.`
-    : "No Times Voted with Trump data are available for this member yet.";
+    : "Open VoteHub's Trump Score source page for methodology and live published scores.";
+  const scoreMarkup = score === null
+    ? `<span class="alignment-score-link">${scoreValue}</span>`
+    : `<a class="alignment-score-link" href="${escapeAttribute(sourceUrl)}" target="_blank" rel="noreferrer" title="${escapeAttribute(title)}">${scoreValue}</a>`;
 
   return `
     <div class="alignment-block" title="${escapeAttribute(title)}">
       <p class="alignment-score ${trumpScoreToneClass(score)}">
-        <span class="alignment-score-value">${scoreValue}</span>
+        <span class="alignment-score-value">${scoreMarkup}</span>
         <span class="alignment-score-label">Percent Voted With Trump</span>
       </p>
-      <p class="alignment-indicator ${trumpScoreIndicatorClass(score)}">${trumpScoreIndicatorText(score)}</p>
     </div>
   `;
 }

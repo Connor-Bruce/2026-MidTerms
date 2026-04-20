@@ -634,6 +634,18 @@ a {
   white-space: nowrap;
 }
 
+.alignment-score-link {
+  color: inherit;
+  text-decoration: none;
+  font: inherit;
+}
+
+.alignment-score-link:hover,
+.alignment-score-link:focus-visible {
+  color: inherit;
+  text-decoration: none;
+}
+
 .alignment-score-label {
   font-size: 0.62rem;
   letter-spacing: 0.14em;

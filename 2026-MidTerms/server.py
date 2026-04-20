@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import os
 import re
 import time
+import zipfile
 from functools import lru_cache
 from html import unescape
 from pathlib import Path
@@ -82,7 +84,9 @@ FEATURED_BILL_SPECS = (
 )
 FEATURED_BILL_LIMIT = 3
 TRUMP_SCORE_METHODOLOGY_LABEL = "VoteHub-style methodology"
-TRUMP_SCORE_METHODOLOGY_URL = "https://votehub.com/2026/02/04/republicans-in-congress-voted-in-lockstep-with-trump-in-2025/"
+TRUMP_SCORE_METHODOLOGY_URL = "https://votehub.com/trump-score"
+VOTEHUB_TRUMP_SCORE_XLSX_URL = "https://docs.google.com/spreadsheets/d/17eg8P7li3D2aDP7uKDXjj0bQ5jOPoooF/export?format=xlsx"
+VOTEHUB_TRUMP_SCORE_CACHE_TTL_SECONDS = 60 * 60 * 6
 TRUMP_SCORE_TRACKED_VOTES = (
     {
         "chamber": "House",
@@ -297,6 +301,8 @@ STATE_OPTIONS = [
 ]
 
 _TEXT_CACHE: dict[str, tuple[float, str]] = {}
+_BINARY_CACHE: dict[str, tuple[float, bytes]] = {}
+_VOTEHUB_SCORE_LOOKUP_CACHE: tuple[float, dict[str, dict[str, Any]]] | None = None
 STATE_NAME_TO_CODE = {name: code for code, name in STATE_OPTIONS}
 PARTY_NAME_TO_ABBREV = {
     "Democratic": "D",
@@ -653,6 +659,19 @@ def fetch_text(url: str, *, cache_ttl: int = CACHE_TTL_SECONDS) -> str:
         content = response.read().decode("utf-8")
 
     _TEXT_CACHE[url] = (time.time(), content)
+    return content
+
+
+def fetch_binary(url: str, *, cache_ttl: int = CACHE_TTL_SECONDS) -> bytes:
+    cached = _BINARY_CACHE.get(url)
+    if cached and time.time() - cached[0] < cache_ttl:
+        return cached[1]
+
+    request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
+    with urlopen(request, timeout=30) as response:
+        content = response.read()
+
+    _BINARY_CACHE[url] = (time.time(), content)
     return content
 
 
@@ -1356,6 +1375,147 @@ def normalize_member_position(raw_vote: str | None) -> str:
     return cleaned
 
 
+def xlsx_column_index(ref: str) -> int:
+    index = 0
+    for char in ref:
+        if not char.isalpha():
+            break
+        index = (index * 26) + (ord(char.upper()) - 64)
+    return index - 1
+
+
+def xlsx_cell_value(cell: ET.Element, shared_strings: list[str]) -> str:
+    value_node = find_child(cell, "v")
+    if value_node is None or value_node.text is None:
+        return ""
+    if cell.get("t") == "s":
+        return shared_strings[int(value_node.text)]
+    return value_node.text
+
+
+def load_xlsx_shared_strings(workbook: zipfile.ZipFile) -> list[str]:
+    shared_strings_path = "xl/sharedStrings.xml"
+    if shared_strings_path not in workbook.namelist():
+        return []
+
+    root = ET.fromstring(workbook.read(shared_strings_path))
+    values: list[str] = []
+    for item in root:
+        values.append(
+            "".join(text_node.text or "" for text_node in item.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}t"))
+        )
+    return values
+
+
+def workbook_sheet_paths(workbook: zipfile.ZipFile) -> dict[str, str]:
+    root = ET.fromstring(workbook.read("xl/workbook.xml"))
+    rel_root = ET.fromstring(workbook.read("xl/_rels/workbook.xml.rels"))
+    rel_map = {
+        rel.get("Id"): rel.get("Target")
+        for rel in rel_root
+    }
+
+    sheet_paths: dict[str, str] = {}
+    sheets_node = find_child(root, "sheets")
+    if sheets_node is None:
+        return sheet_paths
+
+    for sheet in list(sheets_node):
+        name = sheet.get("name")
+        rel_id = sheet.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+        target = rel_map.get(rel_id or "")
+        if name and target:
+            normalized_target = target.lstrip("/")
+            if not normalized_target.startswith("xl/"):
+                normalized_target = f"xl/{normalized_target.lstrip('./')}"
+            sheet_paths[name] = normalized_target
+    return sheet_paths
+
+
+def iter_xlsx_sheet_rows(workbook: zipfile.ZipFile, path: str, shared_strings: list[str]) -> list[list[str]]:
+    root = ET.fromstring(workbook.read(path))
+    sheet_data = find_child(root, "sheetData")
+    if sheet_data is None:
+        return []
+
+    rows: list[list[str]] = []
+    for row in list(sheet_data):
+        cells: dict[int, str] = {}
+        max_index = -1
+        for cell in list(row):
+            ref = cell.get("r") or ""
+            column_index = xlsx_column_index(ref)
+            max_index = max(max_index, column_index)
+            cells[column_index] = xlsx_cell_value(cell, shared_strings)
+        rows.append([cells.get(index, "") for index in range(max_index + 1)])
+    return rows
+
+
+def sheet_rows_as_dicts(workbook: zipfile.ZipFile, path: str, shared_strings: list[str]) -> list[dict[str, str]]:
+    rows = iter_xlsx_sheet_rows(workbook, path, shared_strings)
+    if not rows:
+        return []
+
+    headers = [header.strip() for header in rows[0]]
+    mapped_rows: list[dict[str, str]] = []
+    for row in rows[1:]:
+        row_dict = {
+            headers[index]: row[index] if index < len(row) else ""
+            for index in range(len(headers))
+            if headers[index]
+        }
+        if any(value for value in row_dict.values()):
+            mapped_rows.append(row_dict)
+    return mapped_rows
+
+
+def load_votehub_trump_score_lookup() -> dict[str, dict[str, Any]]:
+    global _VOTEHUB_SCORE_LOOKUP_CACHE
+    if _VOTEHUB_SCORE_LOOKUP_CACHE and time.time() - _VOTEHUB_SCORE_LOOKUP_CACHE[0] < VOTEHUB_TRUMP_SCORE_CACHE_TTL_SECONDS:
+        return _VOTEHUB_SCORE_LOOKUP_CACHE[1]
+
+    workbook_bytes = fetch_binary(
+        VOTEHUB_TRUMP_SCORE_XLSX_URL,
+        cache_ttl=VOTEHUB_TRUMP_SCORE_CACHE_TTL_SECONDS,
+    )
+    workbook = zipfile.ZipFile(io.BytesIO(workbook_bytes))
+    shared_strings = load_xlsx_shared_strings(workbook)
+    sheet_paths = workbook_sheet_paths(workbook)
+
+    lookup: dict[str, dict[str, Any]] = {}
+    for sheet_name, chamber in (
+        ("senate_trump_agreement", "Senate"),
+        ("house_trump_agreement", "House"),
+    ):
+        sheet_path = sheet_paths.get(sheet_name)
+        if not sheet_path:
+            continue
+
+        for row in sheet_rows_as_dicts(workbook, sheet_path, shared_strings):
+            bioguide_id = (row.get("bioguide_id") or "").strip().upper()
+            agree_pct = row.get("agree_pct")
+            if not bioguide_id or not agree_pct:
+                continue
+
+            try:
+                raw_score = float(agree_pct)
+            except ValueError:
+                continue
+
+            lookup[bioguide_id] = {
+                "bioguideId": bioguide_id,
+                "chamber": chamber,
+                "fullName": (row.get("full_name") or "").strip(),
+                "party": (row.get("party") or "").strip(),
+                "score": int(round(raw_score * 100)),
+                "scoreRaw": raw_score,
+                "scoreLabel": f"{int(round(raw_score * 100))}%",
+                "sourceMode": "votehub_live",
+            }
+    _VOTEHUB_SCORE_LOOKUP_CACHE = (time.time(), lookup)
+    return lookup
+
+
 @lru_cache(maxsize=128)
 def load_trump_score_vote_entries() -> tuple[dict[str, Any], ...]:
     tracked_votes = sorted(
@@ -1492,6 +1652,24 @@ def match_senate_position(vote_data: dict[str, Any], member: dict[str, Any]) -> 
 
 
 def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
+    bioguide_id = (member.get("bioguideId") or "").upper()
+    votehub_entry = load_votehub_trump_score_lookup().get(bioguide_id) if bioguide_id else None
+    if votehub_entry:
+        score = votehub_entry["score"]
+        return {
+            "score": score,
+            "scoreRaw": votehub_entry.get("scoreRaw"),
+            "scoreLabel": votehub_entry.get("scoreLabel") or f"{score}%",
+            "alignedVotes": None,
+            "votesConsidered": None,
+            "classification": classify_trump_score(score),
+            "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
+            "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+            "scope": "VoteHub published Trump Score for the first session of the 119th Congress in 2025.",
+            "sourceMode": "votehub_live",
+            "trackedBills": [],
+        }
+
     chamber = member.get("chamber")
     if is_house_chamber(chamber):
         chamber_label = "House"
@@ -1552,6 +1730,7 @@ def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
     score = round((aligned_votes / votes_considered) * 100) if votes_considered and participation_rate > 0.5 else None
     return {
         "score": score,
+        "scoreLabel": None if score is None else f"{score}%",
         "alignedVotes": aligned_votes,
         "votesConsidered": votes_considered,
         "participationRate": round(participation_rate * 100) if chamber_votes else 0,
