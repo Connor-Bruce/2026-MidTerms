@@ -200,10 +200,7 @@ function hidePinnedRepresentatives() {
   if (!elements.representativesModule) {
     return;
   }
-  if (isBillBlasterDemo()) {
-    return;
-  }
-  elements.representativesModule.classList.add("detail-hidden");
+  return;
 }
 
 function renderStateOptions(states) {
@@ -521,6 +518,19 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
   `;
 }
 
+function buildRepresentativeVoteMarkup(vote, memberVote) {
+  const votePosition = (memberVote.position || memberVote.vote || "Unknown").toUpperCase();
+  const voteToneClass = voteTone(memberVote.position || memberVote.vote);
+
+  return `
+    <div class="delegate-current-vote">
+      <p class="delegate-current-vote-value ${voteToneClass}">VOTE: ${votePosition}</p>
+      <p class="delegate-current-vote-meta">${vote.billLabel || "SELECTED BILL"}${vote.chamber ? ` · ${vote.chamber.toUpperCase()}` : ""}${vote.rollNumber ? ` · ROLL ${vote.rollNumber}` : ""}</p>
+      ${memberVote.explanation ? `<p class="delegate-current-vote-note">${memberVote.explanation}</p>` : ""}
+    </div>
+  `;
+}
+
 function normalizeLookupText(value) {
   return String(value || "")
     .toLowerCase()
@@ -585,7 +595,7 @@ function clearPinnedRepresentativeVoteCards() {
 }
 
 function updatePinnedRepresentativeVoteCards(payload) {
-  if (!isBillBlasterDemo() || !elements.representativesCards) {
+  if (!elements.representativesCards) {
     return;
   }
 
@@ -605,25 +615,20 @@ function updatePinnedRepresentativeVoteCards(payload) {
         return;
       }
 
-      const voteToneClass = voteTone(memberVote.position || memberVote.vote);
-      const voteSymbolText = voteSymbol(memberVote.position || memberVote.vote);
-      const voteContext = document.createElement("div");
-      voteContext.className = "delegate-current-vote";
-      voteContext.innerHTML = `
-        <p class="delegate-current-vote-label">Selected Bill</p>
-        <p class="delegate-current-vote-value ${voteToneClass}">
-          <span class="vote-icon" aria-hidden="true">${voteSymbolText}</span>
-          ${(memberVote.position || memberVote.vote || "Unknown").toUpperCase()}
-        </p>
-        <p class="delegate-current-vote-meta">${(vote.chamber || "Vote").toUpperCase()}${vote.rollNumber ? ` · ROLL ${vote.rollNumber}` : ""}</p>
-        ${memberVote.explanation ? `<p class="delegate-current-vote-note">${memberVote.explanation}</p>` : ""}
-      `;
+      const headingRow = card.querySelector(".delegate-heading-row");
+      const voteMarkup = buildRepresentativeVoteMarkup(
+        {
+          billLabel: payload.bill?.billLabel || "",
+          chamber: vote.chamber,
+          rollNumber: vote.rollNumber,
+        },
+        memberVote
+      );
 
-      const contactRow = card.querySelector(".contact-row");
-      if (contactRow) {
-        contactRow.insertAdjacentElement("afterend", voteContext);
+      if (headingRow) {
+        headingRow.insertAdjacentHTML("afterend", voteMarkup);
       } else {
-        card.append(voteContext);
+        card.insertAdjacentHTML("beforeend", voteMarkup);
       }
     });
   });
@@ -792,6 +797,9 @@ function renderSearchResults(results) {
 }
 
 function renderDelegation(representatives) {
+  if (!elements.delegationCards) {
+    return;
+  }
   elements.delegationCards.innerHTML = "";
 
   if (!representatives.length) {
@@ -900,17 +908,11 @@ function showDetail(payload) {
       : `${payload.bill.congressLabel || `${payload.bill.congress}th`} Congress Bill`;
   elements.billMeta.textContent = formatBillMeta(payload.bill);
 
-  if (isBillBlasterDemo()) {
-    if (elements.delegationPanel) {
-      elements.delegationPanel.classList.add("detail-hidden");
-    }
-    updatePinnedRepresentativeVoteCards(payload);
-  } else {
-    if (elements.delegationPanel) {
-      elements.delegationPanel.classList.remove("detail-hidden");
-    }
-    renderDelegation(payload.representatives || []);
+  if (elements.delegationPanel) {
+    elements.delegationPanel.classList.add("detail-hidden");
   }
+
+  updatePinnedRepresentativeVoteCards(payload);
   renderVotes(payload.votes || []);
 }
 
@@ -932,9 +934,6 @@ async function loadBillVotes(result) {
   hideInstructionState();
   hidePinnedRepresentatives();
   elements.billDetail.classList.remove("detail-hidden");
-  if (!isBillBlasterDemo()) {
-    elements.delegationCards.innerHTML = "";
-  }
   clearPinnedRepresentativeVoteCards();
   elements.voteTimeline.innerHTML = "";
 
