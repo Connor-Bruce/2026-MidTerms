@@ -579,6 +579,62 @@ a {
   color: var(--muted);
 }
 
+.alignment-block {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  text-align: right;
+}
+
+.alignment-score {
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.alignment-score-strong {
+  color: var(--text);
+}
+
+.alignment-score-breaking {
+  color: var(--republican);
+}
+
+.alignment-score-mixed,
+.alignment-score-unavailable {
+  color: var(--muted);
+}
+
+.alignment-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid currentColor;
+  font-family: var(--mono-stack);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.alignment-indicator-in,
+.alignment-indicator-mixed,
+.alignment-indicator-unavailable {
+  color: var(--muted);
+}
+
+.alignment-indicator-breaking {
+  color: var(--republican);
+}
+
 .delegate-meta,
 .member-role,
 .vote-meta,
@@ -647,10 +703,22 @@ a {
 .delegate-card:hover .delegate-meta,
 .delegate-card:hover .delegate-role,
 .delegate-card:hover .contact-link,
+.delegate-card:hover .alignment-score-strong,
+.delegate-card:hover .alignment-score-mixed,
+.delegate-card:hover .alignment-score-unavailable,
+.delegate-card:hover .alignment-indicator-in,
+.delegate-card:hover .alignment-indicator-mixed,
+.delegate-card:hover .alignment-indicator-unavailable,
 .delegate-card:hover .muted,
 .delegate-card-pinned:hover .delegate-meta,
 .delegate-card-pinned:hover .delegate-role,
 .delegate-card-pinned:hover .contact-link,
+.delegate-card-pinned:hover .alignment-score-strong,
+.delegate-card-pinned:hover .alignment-score-mixed,
+.delegate-card-pinned:hover .alignment-score-unavailable,
+.delegate-card-pinned:hover .alignment-indicator-in,
+.delegate-card-pinned:hover .alignment-indicator-mixed,
+.delegate-card-pinned:hover .alignment-indicator-unavailable,
 .delegate-card-pinned:hover .muted {
   color: var(--text);
 }
@@ -800,6 +868,11 @@ a {
 
   .helper-actions {
     width: 100%;
+  }
+
+  .alignment-block {
+    justify-items: flex-start;
+    text-align: left;
   }
 
   .info-section {

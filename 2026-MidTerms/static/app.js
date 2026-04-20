@@ -45,6 +45,10 @@ const elements = {
 let searchTimer = null;
 let zipTimer = null;
 
+function isBillBlasterDemo() {
+  return document.body.classList.contains("billblaster-demo");
+}
+
 async function fetchJson(url) {
   const response = await fetch(url, {
     headers: {
@@ -132,6 +136,9 @@ function syncZipInput() {
 }
 
 function setEmptyStateCopy(title, body = "") {
+  if (!elements.emptyState || !elements.emptyState.isConnected) {
+    return;
+  }
   if (elements.emptyStateTitle) {
     elements.emptyStateTitle.textContent = title;
   }
@@ -145,6 +152,9 @@ function showDefaultEmptyState() {
   if (state.selectedBill) {
     return;
   }
+  if (!elements.emptyState || !elements.emptyState.isConnected) {
+    return;
+  }
   elements.billDetail.classList.add("detail-hidden");
   elements.emptyState.style.display = "";
   elements.emptyState.hidden = false;
@@ -156,6 +166,9 @@ function showLocationReadyEmptyState() {
   if (state.selectedBill) {
     return;
   }
+  if (!elements.emptyState || !elements.emptyState.isConnected) {
+    return;
+  }
   elements.billDetail.classList.add("detail-hidden");
   elements.emptyState.style.display = "";
   elements.emptyState.hidden = false;
@@ -164,6 +177,18 @@ function showLocationReadyEmptyState() {
 }
 
 function hideInstructionState() {
+  if (!elements.emptyState) {
+    return;
+  }
+  if (isBillBlasterDemo()) {
+    if (elements.emptyState.isConnected) {
+      elements.emptyState.remove();
+    }
+    return;
+  }
+  if (!elements.emptyState.isConnected) {
+    return;
+  }
   elements.emptyState.style.display = "none";
   elements.emptyState.hidden = true;
   elements.emptyState.classList.add("detail-hidden");
@@ -341,6 +366,67 @@ function partyToneClass(partyCode) {
   return "party-independent";
 }
 
+function normalizedTrumpScore(member) {
+  const rawScore = member?.trumpScore?.score;
+  return Number.isFinite(rawScore) ? rawScore : null;
+}
+
+function trumpScoreToneClass(score) {
+  if (score === null) {
+    return "alignment-score-unavailable";
+  }
+  if (score >= 80) {
+    return "alignment-score-strong";
+  }
+  if (score < 25) {
+    return "alignment-score-breaking";
+  }
+  return "alignment-score-mixed";
+}
+
+function trumpScoreIndicatorClass(score) {
+  if (score === null) {
+    return "alignment-indicator-unavailable";
+  }
+  if (score >= 80) {
+    return "alignment-indicator-in";
+  }
+  if (score < 25) {
+    return "alignment-indicator-breaking";
+  }
+  return "alignment-indicator-mixed";
+}
+
+function trumpScoreIndicatorText(score) {
+  if (score === null) {
+    return "NO SCORE";
+  }
+  if (score >= 80) {
+    return "IN ALIGNMENT";
+  }
+  if (score < 25) {
+    return "AGAINST";
+  }
+  return "MIXED RECORD";
+}
+
+function buildTrumpScoreMarkup(member) {
+  const score = normalizedTrumpScore(member);
+  const scoreText = score === null ? "NO TRUMP SCORE" : `${score}% TRUMP SCORE`;
+  const alignedVotes = member?.trumpScore?.alignedVotes;
+  const votesConsidered = member?.trumpScore?.votesConsidered;
+  const title = Number.isFinite(alignedVotes) && Number.isFinite(votesConsidered) && votesConsidered > 0
+    ? `${alignedVotes} of ${votesConsidered} tracked 119th Congress votes aligned with Trump's stated position.`
+    : "No tracked Trump Score votes are available for this member yet.";
+
+  return `
+    <div class="alignment-block" title="${escapeAttribute(title)}">
+      <p class="alignment-score ${trumpScoreToneClass(score)}">${scoreText}</p>
+      <p class="alignment-indicator ${trumpScoreIndicatorClass(score)}">${trumpScoreIndicatorText(score)}</p>
+    </div>
+  `;
+}
+
 function displayMemberName(member) {
   const displayName = String(member.displayName || "").trim();
   if (displayName) {
@@ -424,12 +510,13 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
       : `Open official contact page for ${displayName || "this office"}`,
     fallback: member.email ? "Email unavailable" : "Contact unavailable",
   });
-  const financeMarkup = buildContactMarkup(member.financeUrl || "", "OpenSecrets", {
+  const financeMarkup = buildContactMarkup(member.financeUrl || "", "Finance Data", {
     title: "Open campaign finance profile on OpenSecrets",
     ariaLabel: `Open OpenSecrets finance data for ${displayName || "this office"}`,
     fallback: "Finance data unavailable",
   });
   const locationLabel = representativeLocationLabel(member.state, member.district);
+  const trumpScoreMarkup = buildTrumpScoreMarkup(member);
 
   return `
     <p class="delegate-role">${member.roleLabel || "Representative"}</p>
@@ -438,6 +525,7 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
         <h3>${displayName}</h3>
         ${partyMarkup}
       </div>
+      ${trumpScoreMarkup}
     </div>
     <p class="delegate-meta">${member.party || "Unknown party"}${locationLabel ? ` · ${locationLabel}` : ""}</p>
     ${extraLabel ? `<p class="delegate-select-label">${extraLabel}</p>` : ""}

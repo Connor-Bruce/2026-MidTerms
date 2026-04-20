@@ -81,6 +81,45 @@ FEATURED_BILL_SPECS = (
     },
 )
 FEATURED_BILL_LIMIT = 3
+TRUMP_SCORE_METHODOLOGY_LABEL = "VoteHub-style methodology"
+TRUMP_SCORE_METHODOLOGY_URL = "https://votehub.com/2026/02/04/republicans-in-congress-voted-in-lockstep-with-trump-in-2025/"
+TRUMP_SCORE_TRACKED_BILLS = (
+    {
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "1",
+        "title": "One Big Beautiful Bill Act of 2025",
+        "trumpPosition": "support",
+    },
+    {
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "22",
+        "title": "Safeguard American Voter Eligibility (SAVE) Act",
+        "trumpPosition": "support",
+    },
+    {
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "27",
+        "title": "HALT Fentanyl Act",
+        "trumpPosition": "support",
+    },
+    {
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "4",
+        "title": "Rescissions Act of 2025",
+        "trumpPosition": "support",
+    },
+    {
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "4405",
+        "title": "Epstein Files Transparency Act",
+        "trumpPosition": "support",
+    },
+)
 FUNDING_SEGMENTS = (
     {
         "key": "energy",
@@ -1033,6 +1072,20 @@ def fetch_representatives(state: str, district: str | None) -> list[dict[str, An
         chamber = hydrated.get("chamber")
         hydrated["roleLabel"] = "Senator" if (chamber or "").lower() == "senate" else "Representative"
         hydrated["financeUrl"] = build_opensecrets_member_url(hydrated)
+        try:
+            hydrated["trumpScore"] = build_member_trump_score(hydrated)
+        except Exception:
+            hydrated["trumpScore"] = {
+                "score": None,
+                "alignedVotes": 0,
+                "votesConsidered": 0,
+                "classification": "unavailable",
+                "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
+                "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+                "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
+                "sourceMode": "unavailable",
+                "trackedBills": [],
+            }
         enriched.append(hydrated)
 
     return enriched
@@ -1239,6 +1292,65 @@ def normalize_member_position(raw_vote: str | None) -> str:
     return cleaned
 
 
+@lru_cache(maxsize=128)
+def load_trump_score_vote_entries() -> tuple[dict[str, Any], ...]:
+    tracked_votes: list[dict[str, Any]] = []
+
+    for spec in TRUMP_SCORE_TRACKED_BILLS:
+        latest_by_chamber: dict[str, dict[str, Any]] = {}
+        votes = collect_bill_votes(spec["congress"], spec["billType"], spec["billNumber"])
+        for vote in votes:
+            chamber = infer_vote_chamber(vote.get("url"), vote.get("chamber"))
+            if chamber not in {"House", "Senate"}:
+                continue
+
+            current = latest_by_chamber.get(chamber)
+            candidate_date = vote.get("voteDate") or vote.get("actionDate") or ""
+            current_date = (current or {}).get("voteDate") or (current or {}).get("actionDate") or ""
+            if current is None or candidate_date > current_date:
+                latest_by_chamber[chamber] = vote
+
+        for chamber, vote in latest_by_chamber.items():
+            tracked_votes.append(
+                {
+                    **spec,
+                    "chamber": chamber,
+                    "voteUrl": vote.get("url"),
+                    "rollNumber": vote.get("rollNumber"),
+                    "voteDate": vote.get("voteDate") or vote.get("actionDate"),
+                    "actionText": vote.get("actionText"),
+                }
+            )
+
+    tracked_votes.sort(
+        key=lambda item: (
+            item.get("voteDate") or "",
+            item.get("congress") or 0,
+            item.get("billNumber") or "",
+        ),
+        reverse=True,
+    )
+    return tuple(tracked_votes)
+
+
+def is_vote_aligned_with_trump(position: str | None, trump_position: str) -> bool:
+    normalized = normalize_member_position(position)
+    if trump_position == "oppose":
+        return normalized == "Nay"
+    return normalized == "Yea"
+
+
+def classify_trump_score(score: int | None) -> str:
+    if score is None:
+        return "unavailable"
+    if score >= 80:
+        return "in_alignment"
+    if score < 25:
+        return "against"
+    return "mixed"
+
+
+@lru_cache(maxsize=256)
 def parse_house_vote(url: str) -> dict[str, Any]:
     root = fetch_xml(url)
     vote_metadata = find_child(root, "vote-metadata")
@@ -1269,6 +1381,7 @@ def parse_house_vote(url: str) -> dict[str, Any]:
     }
 
 
+@lru_cache(maxsize=256)
 def parse_senate_vote(url: str) -> dict[str, Any]:
     root = fetch_xml(url)
 
@@ -1341,6 +1454,79 @@ def match_senate_position(vote_data: dict[str, Any], member: dict[str, Any]) -> 
     return same_state[0] if len(same_state) == 1 else None
 
 
+def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
+    chamber = member.get("chamber")
+    if is_house_chamber(chamber):
+        chamber_label = "House"
+    elif (chamber or "").lower() == "senate":
+        chamber_label = "Senate"
+    else:
+        return {
+            "score": None,
+            "alignedVotes": 0,
+            "votesConsidered": 0,
+            "classification": "unavailable",
+            "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
+            "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+            "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
+            "sourceMode": "tracked_legislation",
+            "trackedBills": [],
+        }
+
+    chamber_votes = [tracked_vote for tracked_vote in load_trump_score_vote_entries() if tracked_vote["chamber"] == chamber_label]
+    aligned_votes = 0
+    votes_considered = 0
+    tracked_bills = []
+
+    for tracked_vote in chamber_votes:
+        if not tracked_vote.get("voteUrl"):
+            continue
+
+        if chamber_label == "House":
+            feed = parse_house_vote(tracked_vote["voteUrl"])
+            matched_position = match_house_position(feed, member)
+            normalized_position = normalize_member_position(matched_position.get("vote") if matched_position else None)
+        else:
+            feed = parse_senate_vote(tracked_vote["voteUrl"])
+            matched_position = match_senate_position(feed, member)
+            normalized_position = normalize_member_position(matched_position.get("vote") if matched_position else None)
+
+        aligned = False
+        if normalized_position != "Not Voting":
+            votes_considered += 1
+            aligned = is_vote_aligned_with_trump(normalized_position, tracked_vote["trumpPosition"])
+            if aligned:
+                aligned_votes += 1
+
+        tracked_bills.append(
+            {
+                "title": tracked_vote["title"],
+                "billNumber": tracked_vote["billNumber"],
+                "billType": tracked_vote["billType"],
+                "position": normalized_position,
+                "aligned": aligned,
+                "chamber": chamber_label,
+                "voteDate": tracked_vote.get("voteDate"),
+                "rollNumber": tracked_vote.get("rollNumber"),
+            }
+        )
+
+    participation_rate = (votes_considered / len(chamber_votes)) if chamber_votes else 0
+    score = round((aligned_votes / votes_considered) * 100) if votes_considered and participation_rate > 0.5 else None
+    return {
+        "score": score,
+        "alignedVotes": aligned_votes,
+        "votesConsidered": votes_considered,
+        "participationRate": round(participation_rate * 100) if chamber_votes else 0,
+        "classification": classify_trump_score(score),
+        "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
+        "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+        "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
+        "sourceMode": "tracked_legislation",
+        "trackedBills": tracked_bills,
+    }
+
+
 def build_bill_vote_payload(
     congress: int | None,
     bill_type: str,
@@ -1381,6 +1567,7 @@ def build_bill_vote_payload(
                         "name": member.get("displayName") or member.get("listName"),
                         "roleLabel": member.get("roleLabel"),
                         "party": member.get("party"),
+                        "trumpScore": member.get("trumpScore"),
                         "explanation": explanation,
                         "position": normalized_position,
                         "vote": normalized_position,
@@ -1410,6 +1597,7 @@ def build_bill_vote_payload(
                         "name": member.get("displayName") or member.get("listName"),
                         "roleLabel": member.get("roleLabel"),
                         "party": member.get("party"),
+                        "trumpScore": member.get("trumpScore"),
                         "explanation": explanation,
                         "position": normalized_position,
                         "vote": normalized_position,

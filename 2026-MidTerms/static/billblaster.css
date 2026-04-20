@@ -1,4 +1,4 @@
-@import url("/style.css?v=20260419g");
+@import url("/style.css?v=20260419i");
 
 :root {
   --billblaster-red: #ff0000;
@@ -274,7 +274,8 @@ body.billblaster-demo,
 }
 
 .billblaster-demo .alignment-score-mixed,
-.billblaster-demo .alignment-score-modelled {
+.billblaster-demo .alignment-score-modelled,
+.billblaster-demo .alignment-score-unavailable {
   color: var(--billblaster-grey);
 }
 
@@ -295,7 +296,8 @@ body.billblaster-demo,
 
 .billblaster-demo .alignment-indicator-in,
 .billblaster-demo .alignment-indicator-mixed,
-.billblaster-demo .alignment-indicator-modelled {
+.billblaster-demo .alignment-indicator-modelled,
+.billblaster-demo .alignment-indicator-unavailable {
   color: var(--billblaster-grey);
 }
 
@@ -452,14 +454,18 @@ body.billblaster-demo,
 
 .billblaster-demo .delegate-card:hover .alignment-score-mixed,
 .billblaster-demo .delegate-card:hover .alignment-score-modelled,
+.billblaster-demo .delegate-card:hover .alignment-score-unavailable,
 .billblaster-demo .delegate-card:hover .alignment-indicator-in,
 .billblaster-demo .delegate-card:hover .alignment-indicator-mixed,
 .billblaster-demo .delegate-card:hover .alignment-indicator-modelled,
+.billblaster-demo .delegate-card:hover .alignment-indicator-unavailable,
 .billblaster-demo .delegate-card-pinned:hover .alignment-score-mixed,
 .billblaster-demo .delegate-card-pinned:hover .alignment-score-modelled,
+.billblaster-demo .delegate-card-pinned:hover .alignment-score-unavailable,
 .billblaster-demo .delegate-card-pinned:hover .alignment-indicator-in,
 .billblaster-demo .delegate-card-pinned:hover .alignment-indicator-mixed,
-.billblaster-demo .delegate-card-pinned:hover .alignment-indicator-modelled {
+.billblaster-demo .delegate-card-pinned:hover .alignment-indicator-modelled,
+.billblaster-demo .delegate-card-pinned:hover .alignment-indicator-unavailable {
   color: var(--billblaster-grey);
 }
 
