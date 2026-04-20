@@ -76,6 +76,10 @@ a {
   margin-bottom: 2rem;
 }
 
+.hero.hero-simple {
+  grid-template-columns: 1fr;
+}
+
 .hero-copy,
 .hero-card,
 .panel,
@@ -118,6 +122,31 @@ a {
   max-width: 11ch;
   font-size: clamp(2.8rem, 7vw, 6.2rem);
   line-height: 0.88;
+}
+
+.search-intro {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 40px 0;
+  display: grid;
+  gap: 1.5rem;
+  justify-items: center;
+}
+
+.search-intro-copy {
+  width: min(760px, 100%);
+  text-align: center;
+}
+
+.search-intro-title {
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-size: clamp(1.8rem, 4.6vw, 3.7rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .panel h2,
@@ -888,5 +917,14 @@ a {
   .hero h1 {
     max-width: 100%;
     font-size: clamp(2.2rem, 12vw, 3.8rem);
+  }
+
+  .search-intro {
+    padding: 2rem 0;
+  }
+
+  .search-intro-title {
+    font-size: clamp(1.4rem, 8.6vw, 2.6rem);
+    line-height: 1.08;
   }
 }

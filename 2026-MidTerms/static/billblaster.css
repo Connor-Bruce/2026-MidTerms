@@ -1,4 +1,4 @@
-@import url("/style.css?v=20260419i");
+@import url("/style.css?v=20260419k");
 
 :root {
   --billblaster-red: #ff0000;
@@ -41,6 +41,8 @@ body.billblaster-demo,
 
 .billblaster-demo .hero-copy {
   max-width: 56rem;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .demo-banner {
@@ -58,7 +60,8 @@ body.billblaster-demo,
 
 .brand-lockup {
   display: flex;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   gap: 1.5rem;
 }
 
@@ -192,13 +195,17 @@ body.billblaster-demo,
 
 .billblaster-demo .search-bar-panel {
   width: min(760px, 100%);
-  margin: 0 auto 1.75rem;
+  margin: 0 auto;
   padding: 1.5rem 1.75rem;
 }
 
 .billblaster-demo .search-bar-inner {
   display: flex;
   justify-content: center;
+}
+
+.billblaster-demo .search-intro-title {
+  color: var(--billblaster-white);
 }
 
 .billblaster-demo .search-field {
