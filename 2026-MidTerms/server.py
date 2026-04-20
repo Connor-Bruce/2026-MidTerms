@@ -83,40 +83,104 @@ FEATURED_BILL_SPECS = (
 FEATURED_BILL_LIMIT = 3
 TRUMP_SCORE_METHODOLOGY_LABEL = "VoteHub-style methodology"
 TRUMP_SCORE_METHODOLOGY_URL = "https://votehub.com/2026/02/04/republicans-in-congress-voted-in-lockstep-with-trump-in-2025/"
-TRUMP_SCORE_TRACKED_BILLS = (
+TRUMP_SCORE_TRACKED_VOTES = (
     {
+        "chamber": "House",
         "congress": 119,
         "billType": "hr",
-        "billNumber": "1",
-        "title": "One Big Beautiful Bill Act of 2025",
+        "billNumber": "29",
+        "title": "Laken Riley Act",
+        "voteUrl": "https://clerk.house.gov/evs/2025/roll006.xml",
+        "rollNumber": "6",
+        "voteDate": "2025-01-07",
         "trumpPosition": "support",
     },
     {
-        "congress": 119,
-        "billType": "hr",
-        "billNumber": "22",
-        "title": "Safeguard American Voter Eligibility (SAVE) Act",
-        "trumpPosition": "support",
-    },
-    {
+        "chamber": "House",
         "congress": 119,
         "billType": "hr",
         "billNumber": "27",
         "title": "HALT Fentanyl Act",
+        "voteUrl": "https://clerk.house.gov/evs/2025/roll033.xml",
+        "rollNumber": "33",
+        "voteDate": "2025-02-06",
         "trumpPosition": "support",
     },
     {
+        "chamber": "House",
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "22",
+        "title": "Safeguard American Voter Eligibility (SAVE) Act",
+        "voteUrl": "https://clerk.house.gov/evs/2025/roll102.xml",
+        "rollNumber": "102",
+        "voteDate": "2025-04-10",
+        "trumpPosition": "support",
+    },
+    {
+        "chamber": "House",
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "1",
+        "title": "One Big Beautiful Bill Act of 2025",
+        "voteUrl": "https://clerk.house.gov/evs/2025/roll145.xml",
+        "rollNumber": "145",
+        "voteDate": "2025-05-22",
+        "trumpPosition": "support",
+    },
+    {
+        "chamber": "House",
         "congress": 119,
         "billType": "hr",
         "billNumber": "4",
         "title": "Rescissions Act of 2025",
+        "voteUrl": "https://clerk.house.gov/evs/2025/roll168.xml",
+        "rollNumber": "168",
+        "voteDate": "2025-06-12",
         "trumpPosition": "support",
     },
     {
+        "chamber": "Senate",
+        "congress": 119,
+        "billType": "s",
+        "billNumber": "5",
+        "title": "Laken Riley Act",
+        "voteUrl": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00007.xml",
+        "rollNumber": "7",
+        "voteDate": "2025-01-20",
+        "trumpPosition": "support",
+    },
+    {
+        "chamber": "Senate",
+        "congress": 119,
+        "billType": "s",
+        "billNumber": "331",
+        "title": "HALT Fentanyl Act",
+        "voteUrl": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00127.xml",
+        "rollNumber": "127",
+        "voteDate": "2025-03-14",
+        "trumpPosition": "support",
+    },
+    {
+        "chamber": "Senate",
         "congress": 119,
         "billType": "hr",
-        "billNumber": "4405",
-        "title": "Epstein Files Transparency Act",
+        "billNumber": "1",
+        "title": "One Big Beautiful Bill Act of 2025",
+        "voteUrl": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00372.xml",
+        "rollNumber": "372",
+        "voteDate": "2025-07-01",
+        "trumpPosition": "support",
+    },
+    {
+        "chamber": "Senate",
+        "congress": 119,
+        "billType": "hr",
+        "billNumber": "4",
+        "title": "Rescissions Act of 2025",
+        "voteUrl": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00411.xml",
+        "rollNumber": "411",
+        "voteDate": "2025-07-17",
         "trumpPosition": "support",
     },
 )
@@ -1294,39 +1358,11 @@ def normalize_member_position(raw_vote: str | None) -> str:
 
 @lru_cache(maxsize=128)
 def load_trump_score_vote_entries() -> tuple[dict[str, Any], ...]:
-    tracked_votes: list[dict[str, Any]] = []
-
-    for spec in TRUMP_SCORE_TRACKED_BILLS:
-        latest_by_chamber: dict[str, dict[str, Any]] = {}
-        votes = collect_bill_votes(spec["congress"], spec["billType"], spec["billNumber"])
-        for vote in votes:
-            chamber = infer_vote_chamber(vote.get("url"), vote.get("chamber"))
-            if chamber not in {"House", "Senate"}:
-                continue
-
-            current = latest_by_chamber.get(chamber)
-            candidate_date = vote.get("voteDate") or vote.get("actionDate") or ""
-            current_date = (current or {}).get("voteDate") or (current or {}).get("actionDate") or ""
-            if current is None or candidate_date > current_date:
-                latest_by_chamber[chamber] = vote
-
-        for chamber, vote in latest_by_chamber.items():
-            tracked_votes.append(
-                {
-                    **spec,
-                    "chamber": chamber,
-                    "voteUrl": vote.get("url"),
-                    "rollNumber": vote.get("rollNumber"),
-                    "voteDate": vote.get("voteDate") or vote.get("actionDate"),
-                    "actionText": vote.get("actionText"),
-                }
-            )
-
-    tracked_votes.sort(
+    tracked_votes = sorted(
+        TRUMP_SCORE_TRACKED_VOTES,
         key=lambda item: (
             item.get("voteDate") or "",
-            item.get("congress") or 0,
-            item.get("billNumber") or "",
+            item.get("rollNumber") or "",
         ),
         reverse=True,
     )
@@ -1429,7 +1465,8 @@ def match_house_position(vote_data: dict[str, Any], member: dict[str, Any]) -> d
     for position in vote_data["positions"].values():
         if target_state and position.get("state") != target_state:
             continue
-        if target_district and normalize_district(position.get("district")) != target_district:
+        position_district = normalize_district(position.get("district"))
+        if target_district and position_district and position_district != target_district:
             continue
         if target_last and target_last in normalize_name_token(position.get("name")):
             return position
