@@ -34,6 +34,7 @@ const elements = {
   representativesMeta: document.querySelector("#representativesMeta"),
   representativesCards: document.querySelector("#representativesCards"),
   billDetail: document.querySelector("#billDetail"),
+  delegationPanel: document.querySelector(".delegation-panel"),
   billLabel: document.querySelector("#billLabel"),
   billTitle: document.querySelector("#billTitle"),
   lawBadge: document.querySelector("#lawBadge"),
@@ -197,6 +198,9 @@ function hideInstructionState() {
 
 function hidePinnedRepresentatives() {
   if (!elements.representativesModule) {
+    return;
+  }
+  if (isBillBlasterDemo()) {
     return;
   }
   elements.representativesModule.classList.add("detail-hidden");
@@ -537,6 +541,23 @@ function buildRepresentativeCardMarkup(member, extraLabel = "") {
   `;
 }
 
+function normalizeLookupText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function representativeLookupKey(member) {
+  return member.bioguideId
+    || `${normalizeLookupText(displayMemberName(member))}|${normalizeLookupText(member.roleLabel || member.chamber || "member")}`;
+}
+
+function representativeVoteLookupKey(memberVote) {
+  return memberVote.memberId
+    || `${normalizeLookupText(memberVote.name)}|${normalizeLookupText(memberVote.roleLabel || "member")}`;
+}
+
 function resetRepresentativesModule() {
   if (!elements.representativesModule) {
     return;
@@ -568,8 +589,63 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
   representatives.forEach((member) => {
     const card = document.createElement("article");
     card.className = "delegate-card delegate-card-pinned";
+    card.dataset.memberKey = representativeLookupKey(member);
     card.innerHTML = buildRepresentativeCardMarkup(member);
     elements.representativesCards.append(card);
+  });
+}
+
+function clearPinnedRepresentativeVoteCards() {
+  if (!elements.representativesCards) {
+    return;
+  }
+  elements.representativesCards.querySelectorAll(".delegate-current-vote").forEach((node) => {
+    node.remove();
+  });
+}
+
+function updatePinnedRepresentativeVoteCards(payload) {
+  if (!isBillBlasterDemo() || !elements.representativesCards) {
+    return;
+  }
+
+  clearPinnedRepresentativeVoteCards();
+
+  const cardLookup = new Map();
+  elements.representativesCards.querySelectorAll(".delegate-card-pinned").forEach((card) => {
+    if (card.dataset.memberKey) {
+      cardLookup.set(card.dataset.memberKey, card);
+    }
+  });
+
+  (payload.votes || []).forEach((vote) => {
+    (vote.members || []).forEach((memberVote) => {
+      const card = cardLookup.get(representativeVoteLookupKey(memberVote));
+      if (!card) {
+        return;
+      }
+
+      const voteToneClass = voteTone(memberVote.position || memberVote.vote);
+      const voteSymbolText = voteSymbol(memberVote.position || memberVote.vote);
+      const voteContext = document.createElement("div");
+      voteContext.className = "delegate-current-vote";
+      voteContext.innerHTML = `
+        <p class="delegate-current-vote-label">Selected Bill</p>
+        <p class="delegate-current-vote-value ${voteToneClass}">
+          <span class="vote-icon" aria-hidden="true">${voteSymbolText}</span>
+          ${(memberVote.position || memberVote.vote || "Unknown").toUpperCase()}
+        </p>
+        <p class="delegate-current-vote-meta">${(vote.chamber || "Vote").toUpperCase()}${vote.rollNumber ? ` · ROLL ${vote.rollNumber}` : ""}</p>
+        ${memberVote.explanation ? `<p class="delegate-current-vote-note">${memberVote.explanation}</p>` : ""}
+      `;
+
+      const contactRow = card.querySelector(".contact-row");
+      if (contactRow) {
+        contactRow.insertAdjacentElement("afterend", voteContext);
+      } else {
+        card.append(voteContext);
+      }
+    });
   });
 }
 
@@ -844,7 +920,17 @@ function showDetail(payload) {
       : `${payload.bill.congressLabel || `${payload.bill.congress}th`} Congress Bill`;
   elements.billMeta.textContent = formatBillMeta(payload.bill);
 
-  renderDelegation(payload.representatives || []);
+  if (isBillBlasterDemo()) {
+    if (elements.delegationPanel) {
+      elements.delegationPanel.classList.add("detail-hidden");
+    }
+    updatePinnedRepresentativeVoteCards(payload);
+  } else {
+    if (elements.delegationPanel) {
+      elements.delegationPanel.classList.remove("detail-hidden");
+    }
+    renderDelegation(payload.representatives || []);
+  }
   renderVotes(payload.votes || []);
 }
 
@@ -866,7 +952,10 @@ async function loadBillVotes(result) {
   hideInstructionState();
   hidePinnedRepresentatives();
   elements.billDetail.classList.remove("detail-hidden");
-  elements.delegationCards.innerHTML = "";
+  if (!isBillBlasterDemo()) {
+    elements.delegationCards.innerHTML = "";
+  }
+  clearPinnedRepresentativeVoteCards();
   elements.voteTimeline.innerHTML = "";
 
   try {
