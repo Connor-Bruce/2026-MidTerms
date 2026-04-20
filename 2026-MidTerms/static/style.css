@@ -617,12 +617,27 @@ a {
 
 .alignment-score {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0.4rem;
   font-family: var(--mono-stack);
   font-size: 0.74rem;
   font-weight: 900;
   letter-spacing: 0.16em;
   line-height: 1.2;
+  max-width: min(100%, 19rem);
+}
+
+.alignment-score-value {
   white-space: nowrap;
+}
+
+.alignment-score-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .alignment-score-strong {
@@ -662,6 +677,18 @@ a {
 
 .alignment-indicator-breaking {
   color: var(--republican);
+}
+
+.alignment-explainer {
+  margin: 1rem 0 0;
+  color: #666666;
+  font-family: var(--mono-stack);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: none;
 }
 
 .delegate-meta,
@@ -902,6 +929,10 @@ a {
   .alignment-block {
     justify-items: flex-start;
     text-align: left;
+  }
+
+  .alignment-score {
+    justify-content: flex-start;
   }
 
   .info-section {

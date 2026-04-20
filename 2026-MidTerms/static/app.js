@@ -416,16 +416,19 @@ function trumpScoreIndicatorText(score) {
 
 function buildTrumpScoreMarkup(member) {
   const score = normalizedTrumpScore(member);
-  const scoreText = score === null ? "NO TRUMP SCORE" : `${score}% TRUMP SCORE`;
+  const scoreValue = score === null ? "NO DATA" : `${score}%`;
   const alignedVotes = member?.trumpScore?.alignedVotes;
   const votesConsidered = member?.trumpScore?.votesConsidered;
   const title = Number.isFinite(alignedVotes) && Number.isFinite(votesConsidered) && votesConsidered > 0
-    ? `${alignedVotes} of ${votesConsidered} tracked 119th Congress votes aligned with Trump's stated position.`
-    : "No tracked Trump Score votes are available for this member yet.";
+    ? `${alignedVotes} of ${votesConsidered} tracked 119th Congress votes were cast with Trump.`
+    : "No Times Voted with Trump data are available for this member yet.";
 
   return `
     <div class="alignment-block" title="${escapeAttribute(title)}">
-      <p class="alignment-score ${trumpScoreToneClass(score)}">${scoreText}</p>
+      <p class="alignment-score ${trumpScoreToneClass(score)}">
+        <span class="alignment-score-value">${scoreValue}</span>
+        <span class="alignment-score-label">Percent Voted With Trump</span>
+      </p>
       <p class="alignment-indicator ${trumpScoreIndicatorClass(score)}">${trumpScoreIndicatorText(score)}</p>
     </div>
   `;
