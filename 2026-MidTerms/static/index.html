@@ -4,16 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>2026 MidTerms V1.1</title>
-    <link rel="stylesheet" href="/style.css?v=20260419o" />
+    <link rel="stylesheet" href="/style.css?v=20260430a" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero hero-simple">
         <div class="hero-copy">
           <p class="eyebrow">2026 MidTerms V1.1</p>
-          <p class="subcopy">
-            Search enacted bills from the 118th and 119th Congresses, then compare the House and Senate votes for your local delegation in one place, with a small featured set of historical comparison bills at the top.
-          </p>
+          <p class="subcopy">See how your representatives actually vote on major laws.</p>
         </div>
       </header>
 
@@ -67,6 +65,23 @@
               <button id="clearButton" class="ghost-button" type="button">Clear</button>
             </div>
           </div>
+        </section>
+
+        <section id="instantInsightPanel" class="panel instant-insight-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Instant Insight</p>
+              <h2 id="instantInsightHeadline">Finding your delegation…</h2>
+            </div>
+            <button id="instantInsightButton" class="ghost-button instant-insight-button detail-hidden" type="button">View vote</button>
+          </div>
+          <p id="instantInsightSummary" class="instant-insight-summary">
+            Allow location or enter a ZIP code to see a live vote snapshot before you search.
+          </p>
+          <div id="instantInsightMembers" class="instant-insight-members"></div>
+          <p id="instantInsightMeta" class="alignment-explainer instant-insight-meta">
+            We use Congress.gov bill data, official House and Senate roll calls, and VoteHub methodology references.
+          </p>
         </section>
 
         <section id="infoPanel" class="panel info-panel detail-hidden">
@@ -158,7 +173,7 @@
           </div>
           <div id="representativesCards" class="delegation-grid"></div>
           <p class="alignment-explainer">
-            The "Times Voted with Trump" metric tracks the frequency with which a Representative aligned with the administration on official roll-call votes in the 119th Congress. Source: VoteHub.
+            Alignment scores link to VoteHub’s methodology page and are shown alongside official roll-call vote data for context.
           </p>
         </section>
 
@@ -189,6 +204,11 @@
                   <span id="lawBadge" class="law-badge"></span>
                 </div>
                 <p id="billMeta" class="bill-meta"></p>
+                <p id="billDescription" class="bill-description"></p>
+                <div class="bill-trust-row">
+                  <a id="billSourceLink" class="source-link detail-hidden" href="#" target="_blank" rel="noreferrer">Congress.gov bill page</a>
+                  <a id="billMethodologyLink" class="methodology-link" href="https://api.congress.gov/" target="_blank" rel="noreferrer" title="Bill text and actions come from Congress.gov. Member vote positions come from official House and Senate roll call feeds. Alignment scores link out to VoteHub's methodology page.">Methodology</a>
+                </div>
               </article>
 
               <article class="panel votes-panel">
@@ -203,6 +223,6 @@
       </main>
     </div>
 
-    <script src="/app.js?v=20260419n" type="module"></script>
+    <script src="/app.js?v=20260430a" type="module"></script>
   </body>
 </html>

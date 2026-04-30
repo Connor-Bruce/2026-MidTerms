@@ -185,6 +185,63 @@ a {
   font-weight: 700;
 }
 
+.instant-insight-panel {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.instant-insight-summary,
+.bill-description {
+  margin: 0;
+  max-width: 72ch;
+  font-family: var(--mono-stack);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.instant-insight-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.instant-insight-member {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  font-family: var(--mono-stack);
+}
+
+.instant-insight-member-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.instant-insight-member-vote {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.instant-insight-button {
+  width: auto;
+  min-width: 10rem;
+}
+
+.instant-insight-meta {
+  margin-top: 1.25rem;
+}
+
 .eyebrow,
 .hero-card-label,
 .result-label,
@@ -553,6 +610,29 @@ a {
   font-size: clamp(1.8rem, 3vw, 3rem);
 }
 
+.bill-trust-row,
+.vote-trust-row {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.2rem;
+  align-items: center;
+}
+
+.methodology-link {
+  font-family: var(--mono-stack);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.methodology-link:hover,
+.methodology-link:focus-visible {
+  color: var(--text);
+}
+
 .delegation-grid {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
@@ -660,7 +740,19 @@ a {
 .alignment-score-label {
   font-size: 0.62rem;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  text-transform: none;
+}
+
+.alignment-score-footnote {
+  margin: 0;
+  max-width: 18rem;
+  font-family: var(--mono-stack);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  text-transform: none;
+  color: var(--muted);
 }
 
 .alignment-score-strong {
@@ -981,7 +1073,9 @@ a {
   .panel-heading,
   .delegate-heading-row,
   .member-vote,
-  .result-card-top {
+  .result-card-top,
+  .bill-trust-row,
+  .vote-trust-row {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1002,6 +1096,19 @@ a {
 
   .alignment-score {
     justify-content: flex-start;
+  }
+
+  .alignment-score-footnote {
+    max-width: 100%;
+  }
+
+  .instant-insight-members {
+    flex-direction: column;
+  }
+
+  .instant-insight-member {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .info-section {

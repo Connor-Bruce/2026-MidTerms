@@ -1,9 +1,11 @@
 const state = {
   selectedBill: null,
+  instantInsightBill: null,
   activeQuery: "",
   lastLocationKey: "",
   stateNameToCode: {},
   suppressLocationEvents: false,
+  autoLocationAttempted: false,
 };
 
 const DEFAULT_EMPTY_STATE_TITLE = "Pick a bill to unlock the vote breakdown";
@@ -12,6 +14,7 @@ const DEFAULT_EMPTY_STATE_BODY =
 const LOCATION_READY_EMPTY_STATE_TITLE = "Pick a featured bill to unlock the vote breakdown";
 const LOCATION_READY_EMPTY_STATE_BODY =
   "Your representatives are pinned above. Select a featured bill to compare their recorded votes.";
+const TRUMP_SCORE_FOOTNOTE = "Based on 282 selected votes where Trump had a stated position.";
 
 const elements = {
   billSearch: document.querySelector("#billSearch"),
@@ -25,6 +28,12 @@ const elements = {
   infoPanel: document.querySelector("#infoPanel"),
   searchResults: document.querySelector("#searchResults"),
   statusMessage: document.querySelector("#statusMessage"),
+  instantInsightPanel: document.querySelector("#instantInsightPanel"),
+  instantInsightHeadline: document.querySelector("#instantInsightHeadline"),
+  instantInsightSummary: document.querySelector("#instantInsightSummary"),
+  instantInsightMembers: document.querySelector("#instantInsightMembers"),
+  instantInsightMeta: document.querySelector("#instantInsightMeta"),
+  instantInsightButton: document.querySelector("#instantInsightButton"),
   matchCount: document.querySelector("#matchCount"),
   clearButton: document.querySelector("#clearButton"),
   emptyState: document.querySelector("#emptyState"),
@@ -39,6 +48,9 @@ const elements = {
   billTitle: document.querySelector("#billTitle"),
   lawBadge: document.querySelector("#lawBadge"),
   billMeta: document.querySelector("#billMeta"),
+  billDescription: document.querySelector("#billDescription"),
+  billSourceLink: document.querySelector("#billSourceLink"),
+  billMethodologyLink: document.querySelector("#billMethodologyLink"),
   delegationCards: document.querySelector("#delegationCards"),
   voteTimeline: document.querySelector("#voteTimeline"),
 };
@@ -87,6 +99,14 @@ function buildQuery(params) {
 
 function setStatus(message) {
   elements.statusMessage.textContent = message;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;");
 }
 
 function normalizedDistrictValue() {
@@ -391,6 +411,7 @@ function buildTrumpScoreMarkup(member) {
   const sourceUrl = member?.trumpScore?.methodologyUrl || "https://votehub.com/trump-score";
   const alignedVotes = member?.trumpScore?.alignedVotes;
   const votesConsidered = member?.trumpScore?.votesConsidered;
+  const methodologyDetail = member?.trumpScore?.methodologyDetail || TRUMP_SCORE_FOOTNOTE;
   const title = Number.isFinite(alignedVotes) && Number.isFinite(votesConsidered) && votesConsidered > 0
     ? `${alignedVotes} of ${votesConsidered} tracked 119th Congress votes were cast with Trump.`
     : "Open VoteHub's Trump Score source page for methodology and live published scores.";
@@ -402,8 +423,9 @@ function buildTrumpScoreMarkup(member) {
     <div class="alignment-block" title="${escapeAttribute(title)}">
       <p class="alignment-score ${trumpScoreToneClass(score)}">
         <span class="alignment-score-value">${scoreMarkup}</span>
-        <span class="alignment-score-label">Percent Voted With Trump</span>
+        <span class="alignment-score-label">alignment (VoteHub methodology)</span>
       </p>
+      <p class="alignment-score-footnote">${methodologyDetail}</p>
     </div>
   `;
 }
@@ -585,6 +607,74 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
   });
 }
 
+function resetInstantInsight(message = "Allow location or enter a ZIP code to see a live vote snapshot before you search.") {
+  if (!elements.instantInsightPanel) {
+    return;
+  }
+  state.instantInsightBill = null;
+  elements.instantInsightHeadline.textContent = "Finding your delegation…";
+  elements.instantInsightSummary.textContent = message;
+  elements.instantInsightMembers.innerHTML = "";
+  elements.instantInsightMeta.textContent =
+    "We use Congress.gov bill data, official House and Senate roll calls, and VoteHub methodology references.";
+  elements.instantInsightButton.classList.add("detail-hidden");
+}
+
+function renderInstantInsightMembers(members) {
+  if (!elements.instantInsightMembers) {
+    return;
+  }
+  elements.instantInsightMembers.innerHTML = "";
+
+  (members || []).forEach((member) => {
+    const item = document.createElement("div");
+    item.className = "instant-insight-member";
+    item.innerHTML = `
+      <span class="instant-insight-member-name">${escapeHtml(member.name)}</span>
+      <span class="instant-insight-member-vote ${voteTone(member.position)}">${escapeHtml((member.position || "").toUpperCase())}</span>
+    `;
+    elements.instantInsightMembers.append(item);
+  });
+}
+
+function renderInstantInsight(payload) {
+  if (!elements.instantInsightPanel) {
+    return;
+  }
+  state.instantInsightBill = payload.bill || null;
+  elements.instantInsightHeadline.textContent = payload.headline || "Your delegation has a live vote record.";
+  elements.instantInsightSummary.textContent = payload.summary || "Open the vote breakdown to see who lined up where.";
+  renderInstantInsightMembers(payload.members || []);
+  const locationText = payload.location?.label ? `${payload.location.label} · ` : "";
+  const billText = payload.bill?.billLabel ? `${payload.bill.billLabel} · ` : "";
+  elements.instantInsightMeta.textContent = `${locationText}${billText}${payload.trustLabel || "Official congressional roll call data."}`;
+  elements.instantInsightButton.classList.remove("detail-hidden");
+}
+
+async function loadInstantInsight(options = {}) {
+  if (!elements.instantInsightPanel) {
+    return null;
+  }
+  const query = buildQuery({
+    zip: options.zip ?? normalizedZipValue(),
+    state: options.state ?? elements.stateSelect.value,
+    district: options.district ?? normalizedDistrictValue(),
+  });
+  if (!query) {
+    resetInstantInsight();
+    return null;
+  }
+
+  try {
+    const payload = await fetchJson(`/api/instant-insight?${query}`);
+    renderInstantInsight(payload);
+    return payload;
+  } catch (error) {
+    resetInstantInsight(error.message || "Enter a ZIP code to unlock an instant vote insight.");
+    return null;
+  }
+}
+
 function clearPinnedRepresentativeVoteCards() {
   if (!elements.representativesCards) {
     return;
@@ -756,8 +846,8 @@ function renderSearchResults(results) {
       const badgeMarkup = result.featured
         ? `<span class="featured-tag">${result.featuredLabel || "FEATURED"}</span>`
         : "";
-      const descriptionMarkup = result.featuredDescription
-        ? `<span class="result-description">${result.featuredDescription}</span>`
+      const descriptionMarkup = (result.plainDescription || result.featuredDescription)
+        ? `<span class="result-description">${result.plainDescription || result.featuredDescription}</span>`
         : "";
       const detailLabel = result.lawNumber
         ? result.lawNumber
@@ -889,7 +979,11 @@ function renderVotes(votes) {
       <p class="vote-meta">${vote.voteDate || "Unknown date"}${vote.result ? ` · ${vote.result}` : ""}</p>
       <p class="vote-description">${vote.actionText}</p>
       <div class="member-votes">${memberMarkup}</div>
-      <a class="source-link" href="${vote.sourceUrl}" target="_blank" rel="noreferrer">Open official roll call source</a>
+      <div class="vote-trust-row">
+        <a class="source-link" href="${vote.sourceUrl}" target="_blank" rel="noreferrer">${vote.sourceLabel || `Congress roll call #${vote.rollNumber || "?"}`}</a>
+        ${vote.billUrl ? `<a class="source-link" href="${vote.billUrl}" target="_blank" rel="noreferrer">Congress.gov bill page</a>` : ""}
+        <a class="methodology-link" href="https://api.congress.gov/" target="_blank" rel="noreferrer" title="Bill text and actions come from Congress.gov. Member vote positions come from official House and Senate roll call feeds. Alignment scores link out to VoteHub's methodology page.">Methodology</a>
+      </div>
     `;
     elements.voteTimeline.append(card);
   });
@@ -907,6 +1001,17 @@ function showDetail(payload) {
       ? "Public Law"
       : `${payload.bill.congressLabel || `${payload.bill.congress}th`} Congress Bill`;
   elements.billMeta.textContent = formatBillMeta(payload.bill);
+  if (elements.billDescription) {
+    elements.billDescription.textContent = payload.bill.plainDescription || "";
+  }
+  if (elements.billSourceLink) {
+    if (payload.bill.billUrl) {
+      elements.billSourceLink.href = payload.bill.billUrl;
+      elements.billSourceLink.classList.remove("detail-hidden");
+    } else {
+      elements.billSourceLink.classList.add("detail-hidden");
+    }
+  }
 
   if (elements.delegationPanel) {
     elements.delegationPanel.classList.add("detail-hidden");
@@ -994,6 +1099,7 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
   if (!locationKey) {
     state.lastLocationKey = "";
     resetRepresentativesModule();
+    resetInstantInsight();
     renderDistrictSelector([], "", "");
     showDefaultEmptyState();
     return;
@@ -1008,6 +1114,7 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
   try {
     const payload = await loadRepresentatives({ quiet: true });
     if (!payload) {
+      resetInstantInsight();
       showDefaultEmptyState();
       return;
     }
@@ -1017,6 +1124,11 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
       : `manual:${payload.state}:${payload.district || ""}`;
 
     const locationLabel = representativeLocationLabel(payload.state, payload.district);
+    await loadInstantInsight({
+      zip: payload.zip,
+      state: payload.state,
+      district: payload.district,
+    });
 
     if (state.selectedBill) {
       await loadBillVotes(state.selectedBill);
@@ -1034,6 +1146,7 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
     });
   } catch (error) {
     resetRepresentativesModule();
+    resetInstantInsight(error.message || "Enter a ZIP code to unlock an instant vote insight.");
     setStatus(error.message || "I could not load your representatives just now.");
   }
 }
@@ -1097,9 +1210,60 @@ async function handleUseMyLocation() {
   }
 }
 
+async function fetchGeoIpLocation() {
+  return fetchJson("/api/geoip-location");
+}
+
+async function applyIpDetectedLocation() {
+  const payload = await fetchGeoIpLocation();
+  state.suppressLocationEvents = true;
+  if (payload.zip && elements.zipInput) {
+    elements.zipInput.value = payload.zip;
+  }
+  elements.stateSelect.value = payload.state || "";
+  elements.districtInput.value = payload.district || "";
+  state.suppressLocationEvents = false;
+  await handleLocationReady("Location found.", true);
+}
+
+async function attemptAutomaticLocation() {
+  if (state.autoLocationAttempted || currentLocationKey()) {
+    return;
+  }
+  state.autoLocationAttempted = true;
+  resetInstantInsight("Looking up your location for a live vote snapshot…");
+
+  try {
+    const position = await getCurrentPosition();
+    const locationInfo = await reverseGeocodeLocation(
+      position.coords.latitude,
+      position.coords.longitude
+    );
+    await applyDetectedLocation(locationInfo);
+    return;
+  } catch (_error) {
+    // Fall back to IP-based lookup below.
+  }
+
+  try {
+    await applyIpDetectedLocation();
+  } catch (_error) {
+    resetInstantInsight("Enter a ZIP code or allow location access to unlock an instant delegation insight.");
+  }
+}
+
 function wireEvents() {
   elements.billSearch.addEventListener("input", scheduleSearch);
   elements.useLocationButton.addEventListener("click", handleUseMyLocation);
+  if (elements.instantInsightButton) {
+    elements.instantInsightButton.addEventListener("click", () => {
+      if (!state.instantInsightBill) {
+        return;
+      }
+      state.selectedBill = state.instantInsightBill;
+      loadBillVotes(state.instantInsightBill);
+    });
+  }
 
   if (elements.infoButton) {
     elements.infoButton.addEventListener("click", () => {
@@ -1119,6 +1283,7 @@ function wireEvents() {
     state.suppressLocationEvents = false;
     renderDistrictSelector([], "", "");
     resetRepresentativesModule();
+    resetInstantInsight();
     showDefaultEmptyState();
     runSearch();
   });
@@ -1162,6 +1327,7 @@ function wireEvents() {
     if (!hasManualLocationSelection() && !normalizedZipValue()) {
       state.lastLocationKey = "";
       resetRepresentativesModule();
+      resetInstantInsight();
       showDefaultEmptyState();
       setStatus("Enter a 5-digit ZIP code to load your representatives instantly.");
     }
@@ -1214,8 +1380,10 @@ async function bootstrap() {
     }
 
     resetRepresentativesModule();
+    resetInstantInsight();
     wireEvents();
     await runSearch();
+    void attemptAutomaticLocation();
   } catch (error) {
     setStatus(error.message);
   }

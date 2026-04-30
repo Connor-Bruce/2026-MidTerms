@@ -1,4 +1,4 @@
-@import url("/style.css?v=20260419m");
+@import url("/style.css?v=20260430a");
 
 :root {
   --billblaster-red: #ff0000;
@@ -143,6 +143,8 @@ body.billblaster-demo,
 .billblaster-demo .status-message,
 .billblaster-demo .result-meta,
 .billblaster-demo .result-description,
+.billblaster-demo .bill-description,
+.billblaster-demo .instant-insight-summary,
 .billblaster-demo .delegate-meta,
 .billblaster-demo .vote-meta,
 .billblaster-demo .vote-description,
@@ -171,6 +173,14 @@ body.billblaster-demo,
   letter-spacing: 0.04em;
   text-align: center;
   text-transform: none;
+}
+
+.billblaster-demo .instant-insight-member {
+  border-color: var(--billblaster-border);
+}
+
+.billblaster-demo .instant-insight-member-name {
+  color: var(--billblaster-white);
 }
 
 .billblaster-demo .result-description {
@@ -328,6 +338,10 @@ body.billblaster-demo,
   max-width: min(100%, 19rem);
 }
 
+.billblaster-demo .alignment-score-footnote {
+  color: var(--billblaster-grey);
+}
+
 .billblaster-demo .alignment-score-strong {
   color: var(--billblaster-white);
 }
@@ -463,14 +477,17 @@ body.billblaster-demo,
 }
 
 .billblaster-demo .contact-link,
-.billblaster-demo .source-link {
+.billblaster-demo .source-link,
+.billblaster-demo .methodology-link {
   color: var(--billblaster-white);
 }
 
 .billblaster-demo .contact-link:hover,
 .billblaster-demo .contact-link:focus-visible,
 .billblaster-demo .source-link:hover,
-.billblaster-demo .source-link:focus-visible {
+.billblaster-demo .source-link:focus-visible,
+.billblaster-demo .methodology-link:hover,
+.billblaster-demo .methodology-link:focus-visible {
   color: var(--billblaster-grey);
 }
 

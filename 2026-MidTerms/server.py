@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import os
+import ipaddress
 import re
 import time
 import zipfile
@@ -44,6 +45,10 @@ LEGISLATORS_CURRENT_JSON_URL = "https://raw.githubusercontent.com/unitedstates/c
 INFLUENCE_ID_CACHE_TTL_SECONDS = 60 * 60 * 24
 CENSUS_ZIP_CROSSWALK_URL = "https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11920_zcta520_natl.txt"
 ZIP_CROSSWALK_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
+IP_GEOLOCATION_URL_TEMPLATE = "https://ipapi.co/{ip}/json/"
+IP_GEOLOCATION_FALLBACK_URL = "https://ipapi.co/json/"
+TRUST_DATA_LABEL = "Congress.gov bill data + official House and Senate roll call feeds"
+TRUMP_SCORE_SELECTED_VOTE_COUNT = 282
 
 PASSAGE_ACTION_TERMS = (
     "passed",
@@ -83,7 +88,7 @@ FEATURED_BILL_SPECS = (
     },
 )
 FEATURED_BILL_LIMIT = 3
-TRUMP_SCORE_METHODOLOGY_LABEL = "VoteHub-style methodology"
+TRUMP_SCORE_METHODOLOGY_LABEL = "VoteHub methodology"
 TRUMP_SCORE_METHODOLOGY_URL = "https://votehub.com/trump-score"
 VOTEHUB_TRUMP_SCORE_XLSX_URL = "https://docs.google.com/spreadsheets/d/17eg8P7li3D2aDP7uKDXjj0bQ5jOPoooF/export?format=xlsx"
 VOTEHUB_TRUMP_SCORE_CACHE_TTL_SECONDS = 60 * 60 * 6
@@ -245,6 +250,22 @@ MOCK_FUNDING_CANDIDATES = {
         "sourceLabel": "Mock OpenSecrets Industry Mix",
     },
 }
+
+BILL_TOPIC_HINTS = (
+    (("appropriation", "appropriations", "funding", "budget"), "Federal funding and government spending bill."),
+    (("infrastructure", "highway", "bridge", "transit", "broadband"), "Infrastructure and public works bill."),
+    (("defense", "armed forces", "military", "security assistance"), "Defense and national security bill."),
+    (("health", "medicare", "medicaid", "pharma", "drug", "hospital"), "Health care and prescription drug bill."),
+    (("voter", "election", "citizenship", "registration"), "Federal election and voter eligibility bill."),
+    (("border", "immigration", "asylum"), "Border security and immigration bill."),
+    (("tax", "revenue", "irs"), "Tax and federal revenue bill."),
+    (("transparency", "records", "disclosure", "files"), "Government transparency and records disclosure bill."),
+    (("energy", "oil", "gas", "climate"), "Energy and climate policy bill."),
+    (("education", "school", "student"), "Education policy bill."),
+    (("farm", "agriculture", "nutrition"), "Agriculture and food policy bill."),
+    (("housing", "rent", "mortgage"), "Housing and community development bill."),
+    (("veteran", "va"), "Veterans services and benefits bill."),
+)
 
 STATE_OPTIONS = [
     ("AL", "Alabama"),
@@ -450,6 +471,21 @@ def pretty_bill_type(bill_type: str) -> str:
     return mapping.get(bill_type.lower(), bill_type.upper())
 
 
+def congress_bill_page_url(congress: int, bill_type: str, bill_number: str) -> str:
+    slug_map = {
+        "hr": "house-bill",
+        "s": "senate-bill",
+        "hjres": "house-joint-resolution",
+        "sjres": "senate-joint-resolution",
+        "hconres": "house-concurrent-resolution",
+        "sconres": "senate-concurrent-resolution",
+        "hres": "house-resolution",
+        "sres": "senate-resolution",
+    }
+    type_slug = slug_map.get((bill_type or "").lower(), "bill")
+    return f"https://www.congress.gov/bill/{ordinal_congress(congress).lower()}-congress/{type_slug}/{int(bill_number)}"
+
+
 def ordinal_congress(congress: int) -> str:
     if 10 <= congress % 100 <= 20:
         suffix = "th"
@@ -477,6 +513,38 @@ def normalize_zip_code(value: str | None) -> str | None:
     if len(normalized) != 5:
         raise ValueError("ZIP code must be 5 digits.")
     return normalized
+
+
+def is_public_ip(ip_text: str | None) -> bool:
+    if not ip_text:
+        return False
+    candidate = ip_text.strip()
+    if not candidate or candidate.lower() == "localhost":
+        return False
+    try:
+        parsed = ipaddress.ip_address(candidate)
+    except ValueError:
+        return False
+    return not (parsed.is_private or parsed.is_loopback or parsed.is_link_local or parsed.is_reserved or parsed.is_multicast)
+
+
+def request_client_ip() -> str | None:
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        for candidate in forwarded_for.split(","):
+            ip_text = candidate.strip()
+            if is_public_ip(ip_text):
+                return ip_text
+
+    for header_name in ("X-Real-Ip", "CF-Connecting-IP"):
+        ip_text = (request.headers.get(header_name) or "").strip()
+        if is_public_ip(ip_text):
+            return ip_text
+
+    remote_addr = (request.remote_addr or "").strip()
+    if is_public_ip(remote_addr):
+        return remote_addr
+    return None
 
 
 def district_option_label(state: str, district: str) -> str:
@@ -675,6 +743,14 @@ def fetch_binary(url: str, *, cache_ttl: int = CACHE_TTL_SECONDS) -> bytes:
     return content
 
 
+def fetch_json_url(url: str, *, cache_ttl: int = CACHE_TTL_SECONDS) -> dict[str, Any]:
+    text = fetch_text(url, cache_ttl=cache_ttl)
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        raise ValueError("Expected JSON object response.")
+    return payload
+
+
 def fetch_xml(url: str, *, cache_ttl: int = CACHE_TTL_SECONDS) -> ET.Element:
     text = fetch_text(url, cache_ttl=cache_ttl)
     return ET.fromstring(text)
@@ -800,6 +876,40 @@ def featured_bill_spec_for(congress: int, bill_type: str, bill_number: str) -> d
     return None
 
 
+def infer_bill_plain_description(summary: dict[str, Any]) -> str:
+    featured_description = clean_text(summary.get("featuredDescription"))
+    if featured_description:
+        return featured_description
+
+    title_haystack = normalize_query(
+        " ".join(
+            filter(
+                None,
+                [
+                    summary.get("title"),
+                    summary.get("officialTitle"),
+                    summary.get("latestActionText"),
+                ],
+            )
+        )
+    )
+    for keywords, description in BILL_TOPIC_HINTS:
+        if any(keyword in title_haystack for keyword in keywords):
+            return description
+
+    origin_chamber = summary.get("originChamber")
+    if origin_chamber:
+        return f"{origin_chamber} floor bill tracked through official roll-call records."
+    return "Federal legislation tracked through official congressional records."
+
+
+def enrich_bill_summary(summary: dict[str, Any]) -> dict[str, Any]:
+    enriched = dict(summary)
+    enriched["plainDescription"] = infer_bill_plain_description(enriched)
+    enriched["trustLabel"] = TRUST_DATA_LABEL
+    return enriched
+
+
 def law_item_to_summary(item: ET.Element) -> dict[str, Any]:
     congress_text = child_text(item, "congress")
     congress = int(congress_text) if congress_text and congress_text.isdigit() else CURRENT_CONGRESS
@@ -811,6 +921,8 @@ def law_item_to_summary(item: ET.Element) -> dict[str, Any]:
     introduced_date = child_text(item, "introducedDate") or latest_action_date
     law_number = child_text(item, "laws/number") or extract_law_number(latest_action_text)
     bill_label = f"{pretty_bill_type(bill_type)} {bill_number}".strip()
+
+    bill_url = child_text(item, "url") or congress_bill_page_url(congress, bill_type, bill_number)
 
     return {
         "billType": bill_type,
@@ -828,7 +940,7 @@ def law_item_to_summary(item: ET.Element) -> dict[str, Any]:
         "lawNumber": law_number,
         "lawType": child_text(item, "laws/type"),
         "originChamber": child_text(item, "originChamber"),
-        "billUrl": child_text(item, "url"),
+        "billUrl": bill_url,
     }
 
 
@@ -837,7 +949,7 @@ def apply_featured_metadata(summary: dict[str, Any]) -> dict[str, Any]:
     if not featured_spec:
         enriched = dict(summary)
         enriched["featured"] = False
-        return enriched
+        return enrich_bill_summary(enriched)
 
     enriched = dict(summary)
     enriched["featured"] = True
@@ -848,13 +960,15 @@ def apply_featured_metadata(summary: dict[str, Any]) -> dict[str, Any]:
     if featured_spec.get("titleOverride"):
         enriched["officialTitle"] = summary["title"]
         enriched["title"] = featured_spec["titleOverride"]
-    return enriched
+    return enrich_bill_summary(enriched)
 
 
 @lru_cache(maxsize=128)
 def fetch_bill_summary(congress: int, bill_type: str, bill_number: str) -> dict[str, Any]:
     root = fetch_congress_xml(f"/bill/{congress}/{bill_type}/{int(bill_number)}")
-    bill_element = find_descendant(root, "bill") or root
+    bill_element = find_descendant(root, "bill")
+    if bill_element is None:
+        bill_element = root
     summary = law_item_to_summary(bill_element)
     if not summary.get("billType") or not summary.get("billNumber"):
         raise ValueError(f"Could not load bill details for {pretty_bill_type(bill_type)} {bill_number}.")
@@ -1100,7 +1214,7 @@ def hydrate_member(entry: dict[str, Any]) -> dict[str, Any]:
 
     root = fetch_congress_xml(detail_url)
     member_element = find_descendant(root, "member")
-    detail = parse_member_detail(member_element or root)
+    detail = parse_member_detail(member_element if member_element is not None else root)
 
     enriched = dict(entry)
     enriched.update(detail)
@@ -1165,6 +1279,7 @@ def fetch_representatives(state: str, district: str | None) -> list[dict[str, An
                 "classification": "unavailable",
                 "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
                 "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+                "methodologyDetail": f"Based on {TRUMP_SCORE_SELECTED_VOTE_COUNT} selected votes where Trump had a stated position.",
                 "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
                 "sourceMode": "unavailable",
                 "trackedBills": [],
@@ -1212,6 +1327,63 @@ def build_representatives_payload(
         "districtOptions": district_options,
         "hasMultipleDistrictMatches": len(district_options) > 1,
         "representatives": representatives,
+    }
+
+
+def fetch_ip_location_payload(ip_address: str | None = None) -> dict[str, Any]:
+    url = IP_GEOLOCATION_URL_TEMPLATE.format(ip=ip_address) if ip_address else IP_GEOLOCATION_FALLBACK_URL
+    payload = fetch_json_url(url, cache_ttl=60 * 10)
+    if payload.get("error"):
+        raise RuntimeError(payload.get("reason") or "IP geolocation lookup failed.")
+    return payload
+
+
+def build_geoip_location_payload() -> dict[str, Any]:
+    client_ip = request_client_ip()
+    geo_payload = fetch_ip_location_payload(client_ip)
+
+    zip_code = normalize_zip_code(
+        geo_payload.get("postal")
+        or geo_payload.get("zip")
+        or geo_payload.get("postal_code")
+    )
+    state_code = (geo_payload.get("region_code") or geo_payload.get("region") or "").strip().upper() or None
+    city_name = clean_text(geo_payload.get("city"))
+    state_name = clean_text(geo_payload.get("region"))
+    district_code = None
+
+    if geo_payload.get("latitude") and geo_payload.get("longitude"):
+        latitude = str(geo_payload.get("latitude"))
+        longitude = str(geo_payload.get("longitude"))
+        census_payload = fetch_json_url(
+            "https://geocoding.geo.census.gov/geocoder/geographies/coordinates/"
+            f"?x={longitude}&y={latitude}&benchmark=Public_AR_Current&vintage=Current_Current&format=json",
+            cache_ttl=60 * 10,
+        )
+        geographies = (((census_payload.get("result") or {}).get("geographies")) or {})
+        states = geographies.get("States") or []
+        if states and not state_code:
+            state_name = clean_text(states[0].get("NAME")) or state_name
+            state_code = STATE_NAME_TO_CODE.get(state_name or "", state_code)
+        congressional_key = next(
+            (key for key in geographies.keys() if "Congressional Districts" in key),
+            None,
+        )
+        if congressional_key:
+            district_entries = geographies.get(congressional_key) or []
+            if district_entries:
+                district_code = normalize_district(
+                    district_entries[0].get("CD119")
+                    or district_entries[0].get("CD118")
+                    or district_entries[0].get("DISTRICT")
+                )
+
+    representatives_payload = build_representatives_payload(state=state_code, district=district_code, zip_code=zip_code)
+    return {
+        **representatives_payload,
+        "city": city_name,
+        "stateName": state_name,
+        "source": "ip",
     }
 
 
@@ -1665,6 +1837,7 @@ def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
             "classification": classify_trump_score(score),
             "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
             "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+            "methodologyDetail": f"Based on {TRUMP_SCORE_SELECTED_VOTE_COUNT} selected votes where Trump had a stated position.",
             "scope": "VoteHub published Trump Score for the first session of the 119th Congress in 2025.",
             "sourceMode": "votehub_live",
             "trackedBills": [],
@@ -1683,6 +1856,7 @@ def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
             "classification": "unavailable",
             "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
             "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+            "methodologyDetail": f"Based on {TRUMP_SCORE_SELECTED_VOTE_COUNT} selected votes where Trump had a stated position.",
             "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
             "sourceMode": "tracked_legislation",
             "trackedBills": [],
@@ -1737,6 +1911,7 @@ def build_member_trump_score(member: dict[str, Any]) -> dict[str, Any]:
         "classification": classify_trump_score(score),
         "methodology": TRUMP_SCORE_METHODOLOGY_LABEL,
         "methodologyUrl": TRUMP_SCORE_METHODOLOGY_URL,
+        "methodologyDetail": f"Based on {TRUMP_SCORE_SELECTED_VOTE_COUNT} selected votes where Trump had a stated position.",
         "scope": "Current 119th Congress tracked floor votes where Trump publicly stated a position before the vote.",
         "sourceMode": "tracked_legislation",
         "trackedBills": tracked_bills,
@@ -1832,6 +2007,9 @@ def build_bill_vote_payload(
                 "members": mapped,
                 "positions": [{"name": member["name"], "position": member["position"]} for member in mapped],
                 "sourceUrl": vote.get("url"),
+                "billUrl": selected_bill.get("billUrl"),
+                "sourceLabel": f"Congress roll call #{vote.get('rollNumber') or feed.get('rollNumber') or '?'}",
+                "methodologyLabel": TRUST_DATA_LABEL,
             }
         )
 
@@ -1840,7 +2018,105 @@ def build_bill_vote_payload(
         "bill": selected_bill,
         "representatives": representatives,
         "votes": detailed_votes,
+        "methodologyLabel": TRUST_DATA_LABEL,
     }
+
+
+def summarize_bill_alignment(vote_payload: dict[str, Any]) -> dict[str, Any] | None:
+    member_positions_by_key: dict[str, dict[str, Any]] = {}
+    for vote in vote_payload.get("votes", []):
+        for member in vote.get("members", []):
+            normalized_position = normalize_member_position(member.get("position") or member.get("vote"))
+            if normalized_position in {"Not Voting", "Present", "Not In Office"}:
+                continue
+            key = "|".join(
+                filter(
+                    None,
+                    [
+                        str(member.get("memberId") or "").upper(),
+                        normalize_query(member.get("name") or ""),
+                        normalize_query(member.get("roleLabel") or ""),
+                    ],
+                )
+            )
+            member_positions_by_key[key] = {
+                "name": member.get("name"),
+                "position": normalized_position,
+                "party": member.get("party"),
+                "roleLabel": member.get("roleLabel"),
+            }
+
+    member_positions = list(member_positions_by_key.values())
+
+    if not member_positions:
+        return None
+
+    yes_count = sum(1 for member in member_positions if member["position"] == "Yea")
+    no_count = sum(1 for member in member_positions if member["position"] == "Nay")
+    total_count = len(member_positions)
+    bill = vote_payload["bill"]
+    title = bill.get("title") or bill.get("billLabel")
+    headline = ""
+    if yes_count == total_count:
+        headline = f"All your federal reps voted YES on {title}."
+    elif no_count == total_count:
+        headline = f"All your federal reps voted NO on {title}."
+    elif yes_count and no_count:
+        winning = max(yes_count, no_count)
+        trailing = min(yes_count, no_count)
+        headline = f"Your delegation split {winning}–{trailing} on {title}."
+    elif yes_count:
+        headline = f"{yes_count} of your reps voted YES on {title}."
+    else:
+        headline = f"{no_count} of your reps voted NO on {title}."
+
+    return {
+        "headline": headline,
+        "yesCount": yes_count,
+        "noCount": no_count,
+        "memberCount": total_count,
+        "members": member_positions,
+    }
+
+
+def build_instant_insight_payload(
+    state: str | None = None,
+    district: str | None = None,
+    zip_code: str | None = None,
+) -> dict[str, Any]:
+    representatives_payload = build_representatives_payload(state=state, district=district, zip_code=zip_code)
+    state_code = representatives_payload["state"]
+    district_code = representatives_payload["district"]
+
+    for bill in featured_laws():
+        vote_payload = build_bill_vote_payload(
+            bill["congress"],
+            bill["billType"],
+            bill["billNumber"],
+            state_code,
+            district_code,
+        )
+        summary = summarize_bill_alignment(vote_payload)
+        if not summary:
+            continue
+        return {
+            "location": {
+                "zip": representatives_payload.get("zip"),
+                "state": state_code,
+                "district": district_code,
+                "label": district_option_label(state_code, district_code or ""),
+            },
+            "bill": vote_payload["bill"],
+            "headline": summary["headline"],
+            "summary": vote_payload["bill"].get("plainDescription") or vote_payload["bill"].get("featuredDescription"),
+            "members": summary["members"],
+            "yesCount": summary["yesCount"],
+            "noCount": summary["noCount"],
+            "memberCount": summary["memberCount"],
+            "trustLabel": TRUST_DATA_LABEL,
+        }
+
+    raise RuntimeError("I could not build an instant insight for that location yet.")
 
 
 # --- 5. FLASK ROUTES ---
@@ -1884,6 +2160,8 @@ def api_config() -> Any:
             "hasApiKey": bool(CONGRESS_API_KEY),
             "congress": CURRENT_CONGRESS,
             "supportedYears": sorted(SUPPORTED_YEARS),
+            "trustLabel": TRUST_DATA_LABEL,
+            "trumpScoreMethodology": TRUMP_SCORE_METHODOLOGY_LABEL,
             "states": [{"code": code, "name": name} for code, name in STATE_OPTIONS],
         }
     )
@@ -1904,6 +2182,27 @@ def api_search_bills() -> Any:
 def api_representatives() -> Any:
     try:
         payload = build_representatives_payload(
+            state=optional_query_value("state"),
+            district=optional_query_value("district"),
+            zip_code=optional_query_value("zip"),
+        )
+        return jsonify(payload)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
+
+
+@app.get("/api/geoip-location")
+def api_geoip_location() -> Any:
+    try:
+        return jsonify(build_geoip_location_payload())
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": str(exc)}), error_status(exc)
+
+
+@app.get("/api/instant-insight")
+def api_instant_insight() -> Any:
+    try:
+        payload = build_instant_insight_payload(
             state=optional_query_value("state"),
             district=optional_query_value("district"),
             zip_code=optional_query_value("zip"),
