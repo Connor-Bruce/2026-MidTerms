@@ -100,7 +100,11 @@ function buildQuery(params) {
 }
 
 function setStatus(message) {
-  elements.statusMessage.textContent = message;
+  const text = String(message || "");
+  elements.statusMessage.textContent = text;
+  elements.statusMessage.dataset.loading = /(loading|finding|looking up|searching|requesting)/i.test(text)
+    ? "true"
+    : "false";
 }
 
 function isV1App() {
@@ -259,7 +263,7 @@ function setLocationButtonState(isLoading) {
   }
 
   elements.useLocationButton.disabled = isLoading;
-  elements.useLocationButton.textContent = isLoading ? "Finding..." : "Locate";
+  elements.useLocationButton.textContent = isLoading ? "FINDING..." : "LOCATE";
 }
 
 function toggleInfoPanel(forceOpen) {
@@ -399,6 +403,10 @@ function partyToneClass(partyCode) {
     return "party-republican";
   }
   return "party-independent";
+}
+
+function representativeToneClass(member) {
+  return partyToneClass(normalizePartyCode(member?.party));
 }
 
 function normalizedTrumpScore(member) {
@@ -578,7 +586,7 @@ function buildStickyRepresentativeMarkup(member) {
   const scoreUrl = member?.trumpScore?.methodologyUrl || "https://votehub.com/trump-score";
 
   return `
-    <article class="sticky-rep-card">
+    <article class="sticky-rep-card ${representativeToneClass(member)}">
       <div class="sticky-rep-heading">
         <span class="sticky-rep-name">${displayName}</span>
         ${partyMarkup}
@@ -666,7 +674,7 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
 
   representatives.forEach((member) => {
     const card = document.createElement("article");
-    card.className = "delegate-card delegate-card-pinned";
+    card.className = `delegate-card delegate-card-pinned ${representativeToneClass(member)}`;
     card.dataset.memberKey = representativeLookupKey(member);
     card.innerHTML = buildRepresentativeCardMarkup(member);
     elements.representativesCards.append(card);
@@ -968,7 +976,7 @@ function renderDelegation(representatives) {
 
   representatives.forEach((member) => {
     const card = document.createElement("article");
-    card.className = "delegate-card";
+    card.className = `delegate-card ${representativeToneClass(member)}`;
     card.innerHTML = buildRepresentativeCardMarkup(member);
     elements.delegationCards.append(card);
   });

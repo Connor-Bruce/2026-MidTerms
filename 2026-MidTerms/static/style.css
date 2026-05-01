@@ -1252,3 +1252,717 @@ a {
     line-height: 1.08;
   }
 }
+
+/* V1 mobile-only brutalist overhaul */
+.v1-app,
+.v1-app * {
+  border-radius: 0 !important;
+  transition: none !important;
+}
+
+.v1-app {
+  --v1-border-width: 3px;
+  --v1-border: var(--v1-border-width) solid #ffffff;
+  --v1-shadow: 4px 4px 0 #ffffff;
+  --v1-shell-width: 430px;
+  --v1-shell-pad: 16px;
+  background: #000000;
+  color: #ffffff;
+}
+
+.v1-app html,
+.v1-app body {
+  background: #000000;
+}
+
+.v1-app .page-shell {
+  width: 100%;
+  max-width: var(--v1-shell-width);
+  margin: 0 auto;
+  padding: 16px 16px 132px;
+}
+
+.v1-app .workspace,
+.v1-app .detail-stack,
+.v1-app .search-results,
+.v1-app .vote-timeline,
+.v1-app .delegation-grid {
+  gap: 16px;
+}
+
+.v1-app .hero,
+.v1-app .results-layout,
+.v1-app .controls-grid,
+.v1-app .helper-row,
+.v1-app .helper-actions,
+.v1-app .panel-heading,
+.v1-app .result-card-top,
+.v1-app .member-vote,
+.v1-app .bill-trust-row,
+.v1-app .vote-trust-row {
+  grid-template-columns: 1fr !important;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.v1-app .hero {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.v1-app .hero-copy {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.v1-app .eyebrow,
+.v1-app .field span,
+.v1-app .pill,
+.v1-app .law-badge,
+.v1-app .vote-chamber,
+.v1-app .vote-roll,
+.v1-app .featured-tag,
+.v1-app .search-section-label,
+.v1-app .delegate-role,
+.v1-app .member-role,
+.v1-app .result-label {
+  color: #ffffff;
+  font-family: var(--mono-stack);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.v1-app .eyebrow {
+  margin-bottom: 8px;
+}
+
+.v1-app .subcopy {
+  max-width: 9ch;
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-size: clamp(2.1rem, 11vw, 3.5rem);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.08em;
+  text-transform: uppercase;
+}
+
+.v1-app .panel,
+.v1-app .delegate-card,
+.v1-app .vote-card,
+.v1-app .result-card,
+.v1-app .inline-note,
+.v1-app .search-empty {
+  padding: 16px;
+  border: var(--v1-border);
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .controls-panel,
+.v1-app .instant-insight-panel,
+.v1-app .representatives-module,
+.v1-app .search-panel,
+.v1-app .bill-panel,
+.v1-app .votes-panel,
+.v1-app .info-panel,
+.v1-app .empty-panel {
+  width: 100%;
+}
+
+.v1-app .controls-grid,
+.v1-app .helper-row,
+.v1-app .helper-actions {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.v1-app .field {
+  gap: 6px;
+}
+
+.v1-app .field input,
+.v1-app .field select,
+.v1-app .ghost-button,
+.v1-app .location-button {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 14px;
+  border: var(--v1-border);
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+  color: #ffffff;
+  font-family: var(--mono-stack);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.v1-app .field input::placeholder {
+  color: #ffffff;
+  opacity: 1;
+}
+
+.v1-app .field input:focus,
+.v1-app .field select:focus,
+.v1-app .ghost-button:focus-visible,
+.v1-app .location-button:focus-visible {
+  outline: none;
+  background: #ffffff;
+  color: #000000;
+}
+
+.v1-app .ghost-button,
+.v1-app .location-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.v1-app .ghost-button:hover,
+.v1-app .ghost-button:focus-visible,
+.v1-app .location-button:hover,
+.v1-app .location-button:focus-visible,
+.v1-app .info-action-link:hover,
+.v1-app .info-action-link:focus-visible,
+.v1-app .contact-link:hover,
+.v1-app .contact-link:focus-visible,
+.v1-app .source-link:hover,
+.v1-app .source-link:focus-visible,
+.v1-app .methodology-link:hover,
+.v1-app .methodology-link:focus-visible {
+  background: #ffffff;
+  color: #000000;
+}
+
+.v1-app .ghost-button:active,
+.v1-app .location-button:active,
+.v1-app .info-action-link:active,
+.v1-app .contact-link:active,
+.v1-app .source-link:active,
+.v1-app .methodology-link:active {
+  transform: translate(4px, 4px);
+  box-shadow: none !important;
+  background: #ffffff;
+  color: #000000;
+}
+
+.v1-app .location-button:disabled {
+  cursor: wait;
+  animation: v1-status-strobe 0.45s steps(1, end) infinite;
+}
+
+.v1-app .status-message {
+  max-width: none;
+  padding: 6px 8px;
+  border: 2px solid #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+  opacity: 1;
+}
+
+.v1-app .status-message[data-loading="true"] {
+  animation: v1-status-strobe 0.45s steps(1, end) infinite;
+}
+
+.v1-app .sticky-delegation-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  width: 100%;
+  margin: 0;
+}
+
+.v1-app .sticky-delegation-inner {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px;
+  border: var(--v1-border);
+  background: #000000;
+  box-shadow: 0 4px 0 #ffffff;
+}
+
+.v1-app .sticky-delegation-label {
+  gap: 4px;
+}
+
+.v1-app .sticky-delegation-meta {
+  color: #ffffff;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.v1-app .sticky-delegation-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.v1-app .sticky-rep-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #ffffff;
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .sticky-rep-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.v1-app .sticky-rep-name {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.v1-app .sticky-rep-score {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.v1-app .instant-insight-summary,
+.v1-app .bill-description,
+.v1-app .result-description,
+.v1-app .vote-description,
+.v1-app .info-copy,
+.v1-app .member-note,
+.v1-app .delegate-current-vote-note {
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.v1-app .instant-insight-members {
+  display: grid;
+  gap: 8px;
+}
+
+.v1-app .instant-insight-member {
+  width: 100%;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 2px solid #ffffff;
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .results-layout {
+  display: grid !important;
+  gap: 16px;
+}
+
+.v1-app.location-locked .results-layout {
+  grid-template-columns: 1fr;
+}
+
+.v1-app .live-search-panel {
+  display: grid;
+  gap: 12px;
+  position: static;
+}
+
+.v1-app.location-locked .live-search-panel {
+  display: none;
+}
+
+.v1-app .live-search-field {
+  position: sticky;
+  top: 96px;
+  z-index: 65;
+  gap: 6px;
+  background: #000000;
+}
+
+.v1-app .live-search-field::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  width: 12px;
+  height: 24px;
+  background: #ffffff;
+  animation: v1-cursor-block 0.9s steps(1, end) infinite;
+  pointer-events: none;
+}
+
+.v1-app .live-search-copy {
+  padding: 6px 8px 0;
+}
+
+.v1-app .search-results,
+.v1-app .delegation-grid,
+.v1-app .vote-timeline,
+.v1-app .member-votes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.v1-app .result-card {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v1-app .result-card:hover,
+.v1-app .result-card:focus-visible {
+  background: #ffffff;
+  color: #000000;
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+.v1-app .result-card-tags {
+  gap: 8px;
+}
+
+.v1-app .result-arrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 2px solid currentColor;
+  box-shadow: 4px 4px 0 currentColor;
+  text-transform: uppercase;
+}
+
+.v1-app .result-arrow::after {
+  content: "";
+}
+
+.v1-app .delegate-card {
+  --card-ink: #ffffff;
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  overflow: hidden;
+  border: var(--v1-border);
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .delegate-card.party-democrat {
+  --card-ink: #ffffff;
+  background: #0044ff;
+  color: #ffffff;
+}
+
+.v1-app .delegate-card.party-republican {
+  --card-ink: #000000;
+  background: #ff0000;
+  color: #000000;
+}
+
+.v1-app .delegate-card.party-independent {
+  --card-ink: #ffffff;
+  background: #000000;
+  color: #ffffff;
+}
+
+.v1-app .delegate-card:hover,
+.v1-app .delegate-card:focus-visible,
+.v1-app .delegate-card-pinned:hover,
+.v1-app .delegate-card-pinned:focus-visible {
+  transform: translate(4px, 4px);
+  box-shadow: none !important;
+  filter: brightness(0.92);
+}
+
+.v1-app .delegate-heading-row {
+  display: grid;
+  gap: 12px;
+}
+
+.v1-app .delegate-name-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.v1-app .delegate-name-group h3 {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: clamp(1.4rem, 7.5vw, 2rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+}
+
+.v1-app .party-pill {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 2px solid #ffffff;
+  font-size: 13px;
+  line-height: 1;
+  box-shadow: 4px 4px 0 #000000;
+}
+
+.v1-app .party-pill.party-democrat {
+  background: #0044ff;
+  color: #ffffff !important;
+}
+
+.v1-app .party-pill.party-republican {
+  border-color: #000000;
+  background: #ff0000;
+  color: #000000 !important;
+}
+
+.v1-app .party-pill.party-independent {
+  background: #000000;
+  color: #ffffff !important;
+}
+
+.v1-app .delegate-meta,
+.v1-app .delegate-role,
+.v1-app .delegate-select-label,
+.v1-app .member-role,
+.v1-app .vote-meta,
+.v1-app .bill-meta {
+  color: currentColor;
+  opacity: 1;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.v1-app .alignment-block {
+  width: 100%;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
+}
+
+.v1-app .alignment-score {
+  display: block;
+  width: 100%;
+  margin: 0;
+  font-size: clamp(1.9rem, 11vw, 3.1rem);
+  font-weight: 900;
+  line-height: 0.84;
+  letter-spacing: -0.08em;
+  color: currentColor;
+}
+
+.v1-app .alignment-score-value,
+.v1-app .alignment-score-link {
+  display: block;
+  width: 100%;
+  color: inherit;
+}
+
+.v1-app .alignment-score-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.v1-app .alignment-score-footnote,
+.v1-app .alignment-explainer,
+.v1-app .methodology-link {
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.v1-app .contact-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.v1-app .contact-link,
+.v1-app .source-link,
+.v1-app .methodology-link,
+.v1-app .info-action-link {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 2px solid currentColor;
+  box-shadow: 4px 4px 0 currentColor;
+  background: transparent;
+  color: currentColor;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.v1-app .contact-link-disabled {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.v1-app .delegate-current-vote {
+  margin-top: 0;
+  padding: 12px;
+  border: 2px solid #ffffff;
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .delegate-current-vote-value {
+  font-size: clamp(1.2rem, 7vw, 1.8rem);
+  letter-spacing: -0.04em;
+}
+
+.v1-app .delegate-current-vote-meta {
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.v1-app .vote-card {
+  gap: 12px;
+}
+
+.v1-app .vote-badge,
+.v1-app .vote-chamber,
+.v1-app .vote-roll,
+.v1-app .law-badge,
+.v1-app .pill,
+.v1-app .featured-tag {
+  border: 2px solid #ffffff;
+  background: #000000;
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app .vote-badge {
+  min-height: 48px;
+  padding: 0 12px;
+}
+
+.v1-app .vote-yes {
+  color: #00ff00;
+}
+
+.v1-app .vote-no {
+  color: #ff0000;
+}
+
+.v1-app .vote-present,
+.v1-app .vote-neutral {
+  color: #888888;
+}
+
+.v1-app .info-sections {
+  border-top: var(--v1-border);
+}
+
+.v1-app .info-section {
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: var(--v1-border);
+}
+
+.v1-app .info-copy-block h3,
+.v1-app .panel h2,
+.v1-app .empty-panel h2,
+.v1-app .bill-panel h2,
+.v1-app .vote-card h3,
+.v1-app .result-card strong,
+.v1-app .member-name {
+  margin: 0;
+  font-family: var(--mono-stack);
+  font-weight: 900;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.v1-app .panel h2,
+.v1-app .empty-panel h2,
+.v1-app .bill-panel h2 {
+  font-size: clamp(1.5rem, 7.2vw, 2.35rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.v1-app .info-copy-block h3,
+.v1-app .result-card strong,
+.v1-app .member-name {
+  font-size: 1.05rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.v1-app .empty-panel {
+  min-height: 0;
+}
+
+.v1-app .empty-panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #ffffff;
+}
+
+.v1-app .helper-actions,
+.v1-app .helper-actions .ghost-button {
+  width: 100%;
+}
+
+.v1-app #districtSelectField {
+  grid-column: auto;
+}
+
+@keyframes v1-status-strobe {
+  0%,
+  49% {
+    background: #ffffff;
+    color: #000000;
+  }
+  50%,
+  100% {
+    background: #000000;
+    color: #ffffff;
+  }
+}
+
+@keyframes v1-cursor-block {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
