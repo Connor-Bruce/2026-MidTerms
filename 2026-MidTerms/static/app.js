@@ -8,12 +8,12 @@ const state = {
   autoLocationAttempted: false,
 };
 
-const DEFAULT_EMPTY_STATE_TITLE = "Pick a bill to unlock the vote breakdown";
+const DEFAULT_EMPTY_STATE_TITLE = "Find your delegation first";
 const DEFAULT_EMPTY_STATE_BODY =
-  "This prototype focuses on enacted laws from the 118th and 119th Congresses, plus a small featured comparison set. Choose a result on the left and we will pull the official House and Senate roll calls.";
-const LOCATION_READY_EMPTY_STATE_TITLE = "Pick a featured bill to unlock the vote breakdown";
+  "Set your ZIP code or use location to unlock live bill search, a sticky delegation header, and an automatic featured-vote preview.";
+const LOCATION_READY_EMPTY_STATE_TITLE = "Live search unlocked";
 const LOCATION_READY_EMPTY_STATE_BODY =
-  "Your representatives are pinned above. Select a featured bill to compare their recorded votes.";
+  "Your delegation is pinned above. Type a bill name or number to filter the live list, or scroll the featured vote below.";
 const TRUMP_SCORE_FOOTNOTE = "Based on 282 selected votes where Trump had a stated position.";
 
 const elements = {
@@ -27,6 +27,7 @@ const elements = {
   infoButton: document.querySelector("#infoButton"),
   infoPanel: document.querySelector("#infoPanel"),
   searchResults: document.querySelector("#searchResults"),
+  searchPanel: document.querySelector("#searchPanel"),
   statusMessage: document.querySelector("#statusMessage"),
   instantInsightPanel: document.querySelector("#instantInsightPanel"),
   instantInsightHeadline: document.querySelector("#instantInsightHeadline"),
@@ -34,6 +35,7 @@ const elements = {
   instantInsightMembers: document.querySelector("#instantInsightMembers"),
   instantInsightMeta: document.querySelector("#instantInsightMeta"),
   instantInsightButton: document.querySelector("#instantInsightButton"),
+  stickyDelegationBar: document.querySelector("#stickyDelegationBar"),
   matchCount: document.querySelector("#matchCount"),
   clearButton: document.querySelector("#clearButton"),
   emptyState: document.querySelector("#emptyState"),
@@ -99,6 +101,18 @@ function buildQuery(params) {
 
 function setStatus(message) {
   elements.statusMessage.textContent = message;
+}
+
+function isV1App() {
+  return document.body.classList.contains("v1-app");
+}
+
+function setLocationUiReady(isReady) {
+  if (!isV1App()) {
+    return;
+  }
+  document.body.classList.toggle("location-locked", !isReady);
+  document.body.classList.toggle("location-ready", isReady);
 }
 
 function escapeHtml(value) {
@@ -553,6 +567,29 @@ function buildRepresentativeVoteMarkup(vote, memberVote) {
   `;
 }
 
+function buildStickyRepresentativeMarkup(member) {
+  const displayName = displayMemberName(member);
+  const partyCode = normalizePartyCode(member.party);
+  const partyMarkup = partyCode
+    ? `<span class="party-pill ${partyToneClass(partyCode)}" aria-label="Party ${partyCode}">(${partyCode})</span>`
+    : "";
+  const scoreValue = member?.trumpScore?.scoreLabel || "NO DATA";
+  const scoreTone = trumpScoreToneClass(normalizedTrumpScore(member));
+  const scoreUrl = member?.trumpScore?.methodologyUrl || "https://votehub.com/trump-score";
+
+  return `
+    <article class="sticky-rep-card">
+      <div class="sticky-rep-heading">
+        <span class="sticky-rep-name">${displayName}</span>
+        ${partyMarkup}
+      </div>
+      <a class="sticky-rep-score ${scoreTone}" href="${escapeAttribute(scoreUrl)}" target="_blank" rel="noreferrer">
+        ${scoreValue} ALIGNMENT
+      </a>
+    </article>
+  `;
+}
+
 function normalizeLookupText(value) {
   return String(value || "")
     .toLowerCase()
@@ -577,6 +614,34 @@ function resetRepresentativesModule() {
   elements.representativesModule.classList.add("detail-hidden");
   elements.representativesCards.innerHTML = "";
   elements.representativesMeta.textContent = "Set your location to pin your current delegation here.";
+  if (elements.stickyDelegationBar) {
+    elements.stickyDelegationBar.innerHTML = "";
+    elements.stickyDelegationBar.classList.add("detail-hidden");
+  }
+}
+
+function renderStickyDelegationBar(representatives, locationLabel) {
+  if (!elements.stickyDelegationBar || !isV1App()) {
+    return;
+  }
+
+  if (!representatives.length) {
+    elements.stickyDelegationBar.innerHTML = "";
+    elements.stickyDelegationBar.classList.add("detail-hidden");
+    return;
+  }
+
+  const cardMarkup = representatives.map((member) => buildStickyRepresentativeMarkup(member)).join("");
+  elements.stickyDelegationBar.innerHTML = `
+    <div class="sticky-delegation-inner">
+      <div class="sticky-delegation-label">
+        <span class="eyebrow">Your Delegation</span>
+        <span class="sticky-delegation-meta">${locationLabel || "Current delegation"}</span>
+      </div>
+      <div class="sticky-delegation-cards">${cardMarkup}</div>
+    </div>
+  `;
+  elements.stickyDelegationBar.classList.remove("detail-hidden");
 }
 
 function renderPinnedRepresentatives(representatives, locationLabel) {
@@ -589,6 +654,7 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
   elements.representativesMeta.textContent = locationLabel
     ? `Pinned for ${locationLabel}. These members stay visible while you browse bills.`
     : "Pinned current delegation.";
+  renderStickyDelegationBar(representatives, locationLabel);
 
   if (!representatives.length) {
     const note = document.createElement("p");
@@ -1098,6 +1164,7 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
   const locationKey = currentLocationKey();
   if (!locationKey) {
     state.lastLocationKey = "";
+    setLocationUiReady(false);
     resetRepresentativesModule();
     resetInstantInsight();
     renderDistrictSelector([], "", "");
@@ -1124,7 +1191,8 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
       : `manual:${payload.state}:${payload.district || ""}`;
 
     const locationLabel = representativeLocationLabel(payload.state, payload.district);
-    await loadInstantInsight({
+    setLocationUiReady(true);
+    const insightPayload = await loadInstantInsight({
       zip: payload.zip,
       state: payload.state,
       district: payload.district,
@@ -1135,16 +1203,29 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
       return;
     }
 
-    showLocationReadyEmptyState();
     const statusMessage = payload.hasMultipleDistrictMatches
-      ? `${statusPrefix} Representatives pinned for ${locationLabel}. This ZIP crosses multiple districts, so use the selector if needed, then choose a featured bill below to view votes.`
-      : `${statusPrefix} Representatives pinned for ${locationLabel}. Select a featured bill below to view votes.`;
+      ? `${statusPrefix} Delegation pinned for ${locationLabel}. This ZIP crosses multiple districts, so use the selector if needed.`
+      : `${statusPrefix} Delegation pinned for ${locationLabel}.`;
 
     await runSearch({
       featured: true,
       statusMessage,
     });
+
+    if (isV1App() && elements.billSearch) {
+      elements.billSearch.focus({ preventScroll: true });
+    }
+
+    if (isV1App() && insightPayload?.bill) {
+      state.selectedBill = insightPayload.bill;
+      await loadBillVotes(insightPayload.bill);
+      setStatus(`${statusPrefix} Delegation pinned for ${locationLabel}. Showing ${insightPayload.bill.billLabel} automatically while live search is unlocked.`);
+      return;
+    }
+
+    showLocationReadyEmptyState();
   } catch (error) {
+    setLocationUiReady(false);
     resetRepresentativesModule();
     resetInstantInsight(error.message || "Enter a ZIP code to unlock an instant vote insight.");
     setStatus(error.message || "I could not load your representatives just now.");
@@ -1273,6 +1354,7 @@ function wireEvents() {
 
   elements.clearButton.addEventListener("click", () => {
     state.selectedBill = null;
+    state.instantInsightBill = null;
     state.activeQuery = "";
     state.lastLocationKey = "";
     state.suppressLocationEvents = true;
@@ -1282,10 +1364,15 @@ function wireEvents() {
     elements.districtInput.value = "";
     state.suppressLocationEvents = false;
     renderDistrictSelector([], "", "");
+    setLocationUiReady(false);
     resetRepresentativesModule();
     resetInstantInsight();
     showDefaultEmptyState();
-    runSearch();
+    if (!isV1App()) {
+      runSearch();
+    } else {
+      setStatus("Find your delegation first to unlock live bill search.");
+    }
   });
 
   elements.stateSelect.addEventListener("change", async () => {
@@ -1326,6 +1413,7 @@ function wireEvents() {
     renderDistrictSelector([], "", "");
     if (!hasManualLocationSelection() && !normalizedZipValue()) {
       state.lastLocationKey = "";
+      setLocationUiReady(false);
       resetRepresentativesModule();
       resetInstantInsight();
       showDefaultEmptyState();
@@ -1379,10 +1467,16 @@ async function bootstrap() {
       return;
     }
 
+    setLocationUiReady(false);
     resetRepresentativesModule();
     resetInstantInsight();
     wireEvents();
-    await runSearch();
+    if (!isV1App()) {
+      await runSearch();
+    } else {
+      showDefaultEmptyState();
+      setStatus("Find your delegation first to unlock live bill search.");
+    }
     void attemptAutomaticLocation();
   } catch (error) {
     setStatus(error.message);

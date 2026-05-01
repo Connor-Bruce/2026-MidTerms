@@ -6,7 +6,7 @@
     <title>2026 MidTerms V1.1</title>
     <link rel="stylesheet" href="/style.css?v=20260430a" />
   </head>
-  <body>
+  <body class="v1-app location-locked">
     <div class="page-shell">
       <header class="hero hero-simple">
         <div class="hero-copy">
@@ -16,20 +16,6 @@
       </header>
 
       <main class="workspace">
-        <section class="search-intro search-hub">
-          <div class="search-intro-copy">
-            <h1 class="search-intro-title">Find a 2023-2026 law and see how your delegation voted.</h1>
-          </div>
-          <div class="panel search-bar-panel">
-            <div class="search-bar-inner">
-              <label class="field search-field">
-                <span>Bill search</span>
-                <input id="billSearch" type="search" placeholder="Try H.R. 1 or SAVE Act" autocomplete="off" />
-              </label>
-            </div>
-          </div>
-        </section>
-
         <section class="panel controls-panel location-hub">
           <div class="controls-grid">
             <label class="field">
@@ -66,6 +52,8 @@
             </div>
           </div>
         </section>
+
+        <section id="stickyDelegationBar" class="sticky-delegation-bar detail-hidden"></section>
 
         <section id="instantInsightPanel" class="panel instant-insight-panel">
           <div class="panel-heading">
@@ -178,19 +166,24 @@
         </section>
 
         <section class="results-layout">
-          <aside class="panel search-panel">
+          <aside id="searchPanel" class="panel search-panel live-search-panel">
             <div class="panel-heading">
-              <h2>Matches</h2>
+              <h2>Live Search</h2>
               <span id="matchCount" class="pill">0 results</span>
             </div>
+            <label class="field search-field live-search-field">
+              <span>Bill search</span>
+              <input id="billSearch" type="search" placeholder="Type a bill name or number" autocomplete="off" />
+            </label>
+            <p class="status-message live-search-copy">Start typing to filter bills in real time.</p>
             <div id="searchResults" class="search-results"></div>
           </aside>
 
           <section class="detail-stack">
             <section id="emptyState" class="panel empty-panel">
-              <h2>Pick a bill to unlock the vote breakdown</h2>
+              <h2>Find your delegation first</h2>
               <p>
-                This prototype focuses on enacted laws from the 118th and 119th Congresses, plus a small featured comparison set. Choose a result on the left and we will pull the official House and Senate roll calls.
+                Set your ZIP code or use location to unlock live bill search, a sticky delegation header, and an automatic featured-vote preview.
               </p>
             </section>
 

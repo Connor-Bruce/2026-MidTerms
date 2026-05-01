@@ -7,8 +7,8 @@
   --hover: #2d2d2d;
   --democrat: #0044ff;
   --republican: #ff0000;
-  --font-stack: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono-stack: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-stack: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 *,
@@ -389,6 +389,100 @@ a {
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 2rem;
   align-items: start;
+}
+
+.v1-app.location-locked .live-search-panel {
+  display: none;
+}
+
+.v1-app.location-locked .results-layout {
+  grid-template-columns: 1fr;
+}
+
+.sticky-delegation-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.sticky-delegation-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.sticky-delegation-label {
+  display: grid;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.sticky-delegation-meta {
+  font-family: var(--mono-stack);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sticky-delegation-cards {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.sticky-rep-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  min-width: 12rem;
+}
+
+.sticky-rep-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.sticky-rep-name {
+  min-width: 0;
+  font-family: var(--mono-stack);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sticky-rep-score {
+  font-family: var(--mono-stack);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.live-search-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.live-search-field {
+  margin-top: -0.25rem;
+}
+
+.live-search-copy {
+  opacity: 1;
 }
 
 .detail-stack {
@@ -1038,6 +1132,16 @@ a {
   #districtSelectField {
     grid-column: span 2;
   }
+
+  .sticky-delegation-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sticky-delegation-cards {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1109,6 +1213,19 @@ a {
   .instant-insight-member {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .sticky-delegation-bar {
+    top: 0;
+  }
+
+  .sticky-delegation-cards {
+    flex-direction: column;
+  }
+
+  .sticky-rep-card {
+    width: 100%;
+    min-width: 0;
   }
 
   .info-section {
