@@ -3,6 +3,7 @@ const state = {
   instantInsightBill: null,
   activeQuery: "",
   lastLocationKey: "",
+  featuredResults: [],
   stateNameToCode: {},
   suppressLocationEvents: false,
   autoLocationAttempted: false,
@@ -10,14 +11,16 @@ const state = {
 
 const DEFAULT_EMPTY_STATE_TITLE = "Find your delegation first";
 const DEFAULT_EMPTY_STATE_BODY =
-  "Set your ZIP code or use location to unlock live bill search, a sticky delegation header, and an automatic featured-vote preview.";
+  "Tap current location to identify your delegation, then search bills or open a featured vote receipt.";
 const LOCATION_READY_EMPTY_STATE_TITLE = "Live search unlocked";
 const LOCATION_READY_EMPTY_STATE_BODY =
-  "Your delegation is pinned above. Type a bill name or number to filter the live list, or scroll the featured vote below.";
+  "Your delegation is pinned above. Focus the search bar to open recommended bills or type a law name live.";
 const TRUMP_SCORE_FOOTNOTE = "Based on 282 selected votes where Trump had a stated position.";
 
 const elements = {
   billSearch: document.querySelector("#billSearch"),
+  searchOverlay: document.querySelector("#searchOverlay"),
+  searchOverlayLabel: document.querySelector("#searchOverlayLabel"),
   stateSelect: document.querySelector("#stateSelect"),
   districtInput: document.querySelector("#districtInput"),
   districtSelectField: document.querySelector("#districtSelectField"),
@@ -26,6 +29,7 @@ const elements = {
   useLocationButton: document.querySelector("#useLocationButton"),
   infoButton: document.querySelector("#infoButton"),
   infoPanel: document.querySelector("#infoPanel"),
+  infoCloseButton: document.querySelector("#infoCloseButton"),
   searchResults: document.querySelector("#searchResults"),
   searchPanel: document.querySelector("#searchPanel"),
   statusMessage: document.querySelector("#statusMessage"),
@@ -117,6 +121,14 @@ function setLocationUiReady(isReady) {
   }
   document.body.classList.toggle("location-locked", !isReady);
   document.body.classList.toggle("location-ready", isReady);
+}
+
+function setSearchOverlayOpen(isOpen) {
+  if (!elements.searchOverlay) {
+    return;
+  }
+  elements.searchOverlay.classList.toggle("detail-hidden", !isOpen);
+  document.body.classList.toggle("search-overlay-open", isOpen);
 }
 
 function escapeHtml(value) {
@@ -263,7 +275,9 @@ function setLocationButtonState(isLoading) {
   }
 
   elements.useLocationButton.disabled = isLoading;
-  elements.useLocationButton.textContent = isLoading ? "FINDING..." : "LOCATE";
+  elements.useLocationButton.innerHTML = isLoading
+    ? '<span class="location-pin-glyph" aria-hidden="true">⌖</span><span>CURRENT LOCATION / FINDING...</span>'
+    : '<span class="location-pin-glyph" aria-hidden="true">⌖</span><span>CURRENT LOCATION</span>';
 }
 
 function toggleInfoPanel(forceOpen) {
@@ -681,7 +695,7 @@ function renderPinnedRepresentatives(representatives, locationLabel) {
   });
 }
 
-function resetInstantInsight(message = "Allow location or enter a ZIP code to see a live vote snapshot before you search.") {
+function resetInstantInsight(message = "Tap current location to load a live vote snapshot before you search.") {
   if (!elements.instantInsightPanel) {
     return;
   }
@@ -744,7 +758,7 @@ async function loadInstantInsight(options = {}) {
     renderInstantInsight(payload);
     return payload;
   } catch (error) {
-    resetInstantInsight(error.message || "Enter a ZIP code to unlock an instant vote insight.");
+    resetInstantInsight(error.message || "Tap current location to unlock an instant vote insight.");
     return null;
   }
 }
@@ -890,19 +904,53 @@ async function loadRepresentatives(options = {}) {
 }
 
 function renderSearchResults(results) {
+  if (!elements.searchResults) {
+    return;
+  }
   elements.searchResults.innerHTML = "";
-  elements.matchCount.textContent = `${results.length} result${results.length === 1 ? "" : "s"}`;
+  if (elements.matchCount) {
+    elements.matchCount.textContent = `${results.length} result${results.length === 1 ? "" : "s"}`;
+  }
+
+  const queryActive = state.activeQuery.trim().length >= 2;
 
   if (!results.length) {
-    const empty = document.createElement("div");
-    empty.className = "search-empty";
-    empty.textContent = "No matching bills were found.";
-    elements.searchResults.append(empty);
-    return;
+    if (elements.searchOverlayLabel) {
+      elements.searchOverlayLabel.textContent = queryActive ? "NO BILLS FOUND" : "RECOMMENDED BILLS";
+    }
+
+    if (queryActive) {
+      const empty = document.createElement("div");
+      empty.className = "search-empty search-empty-large";
+      empty.innerHTML = `
+        <strong class="search-empty-title">NO BILLS FOUND</strong>
+        <span class="result-description">TRY A DIFFERENT BILL NAME OR OPEN A RECOMMENDED VOTE BELOW.</span>
+      `;
+      elements.searchResults.append(empty);
+
+      if (state.featuredResults.length) {
+        results = state.featuredResults;
+      } else {
+        return;
+      }
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "search-empty";
+      empty.textContent = "NO FEATURED BILLS AVAILABLE.";
+      elements.searchResults.append(empty);
+      return;
+    }
   }
 
   const featuredResults = results.filter((result) => result.featured);
   const standardResults = results.filter((result) => !result.featured);
+  if (featuredResults.length) {
+    state.featuredResults = featuredResults;
+  }
+
+  if (elements.searchOverlayLabel && !queryActive) {
+    elements.searchOverlayLabel.textContent = "RECOMMENDED BILLS";
+  }
 
   const appendSection = (label, sectionResults) => {
     if (!sectionResults.length) {
@@ -947,6 +995,7 @@ function renderSearchResults(results) {
       `;
       button.addEventListener("click", () => {
         state.selectedBill = result;
+        setSearchOverlayOpen(false);
         loadBillVotes(result);
       });
       elements.searchResults.append(button);
@@ -957,7 +1006,7 @@ function renderSearchResults(results) {
     appendSection("RECOMMENDED BILLS", featuredResults);
   }
 
-  appendSection(featuredResults.length && standardResults.length ? "MATCHES" : "", standardResults);
+  appendSection(queryActive ? "MATCHES" : featuredResults.length && standardResults.length ? "MATCHES" : "", standardResults);
 }
 
 function renderDelegation(representatives) {
@@ -1100,16 +1149,17 @@ async function loadBillVotes(result) {
   const district = normalizedDistrictValue();
 
   if (!stateCode) {
-    setStatus("Choose a state or ZIP code first so I can look up the right delegation.");
+    setStatus("TAP CURRENT LOCATION FIRST SO I CAN MAP THE BILL TO YOUR DELEGATION.");
     return;
   }
 
   if (!district) {
-    setStatus("Add a House district number too, then pick the bill again.");
+    setStatus("I STILL NEED A HOUSE DISTRICT BEFORE I CAN LOAD THIS VOTE RECEIPT.");
     return;
   }
 
   setStatus(`Loading vote history for ${result.billLabel}...`);
+  setSearchOverlayOpen(false);
   hideInstructionState();
   hidePinnedRepresentatives();
   elements.billDetail.classList.remove("detail-hidden");
@@ -1136,14 +1186,14 @@ async function runSearch(options = {}) {
   const forceFeatured = options.featured === true;
   const query = forceFeatured ? "" : elements.billSearch.value.trim();
   state.activeQuery = query;
-  if (forceFeatured) {
+  if (forceFeatured && !options.preserveInput) {
     elements.billSearch.value = "";
   }
   const isFeaturedMode = forceFeatured || query.length < 2;
   const queryString = buildQuery(forceFeatured ? { featured: "1" } : { q: query });
   const url = queryString ? `/api/search-bills?${queryString}` : "/api/search-bills";
 
-  setStatus(isFeaturedMode ? "Loading featured bills..." : `Searching for “${query}”...`);
+  setStatus(isFeaturedMode ? "LOADING RECOMMENDED BILLS..." : `SEARCHING FOR ${query.toUpperCase()}...`);
 
   try {
     const payload = await fetchJson(url);
@@ -1154,11 +1204,11 @@ async function runSearch(options = {}) {
     if (isFeaturedMode) {
       const featuredStatus = options.statusMessage
         || (payload.results?.length
-          ? "Featured bills loaded. Pick one to see the delegation vote cards."
-          : "No featured bills are available right now.");
+          ? "RECOMMENDED BILLS LOADED. PICK ONE TO SEE THE VOTE RECEIPT."
+          : "NO FEATURED BILLS ARE AVAILABLE RIGHT NOW.");
       setStatus(featuredStatus);
     } else {
-      setStatus(payload.results?.length ? "Pick a result to see the delegation vote cards." : "No close matches yet.");
+      setStatus(payload.results?.length ? "PICK A BILL TO LOAD THE RECEIPT." : "NO BILLS FOUND.");
     }
   } catch (error) {
     setStatus(error.message);
@@ -1212,22 +1262,19 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
     }
 
     const statusMessage = payload.hasMultipleDistrictMatches
-      ? `${statusPrefix} Delegation pinned for ${locationLabel}. This ZIP crosses multiple districts, so use the selector if needed.`
-      : `${statusPrefix} Delegation pinned for ${locationLabel}.`;
+      ? `${statusPrefix.toUpperCase()} DELEGATION PINNED FOR ${locationLabel}. THIS LOCATION CROSSES MULTIPLE DISTRICTS.`
+      : `${statusPrefix.toUpperCase()} DELEGATION PINNED FOR ${locationLabel}.`;
 
     await runSearch({
       featured: true,
+      preserveInput: true,
       statusMessage,
     });
-
-    if (isV1App() && elements.billSearch) {
-      elements.billSearch.focus({ preventScroll: true });
-    }
 
     if (isV1App() && insightPayload?.bill) {
       state.selectedBill = insightPayload.bill;
       await loadBillVotes(insightPayload.bill);
-      setStatus(`${statusPrefix} Delegation pinned for ${locationLabel}. Showing ${insightPayload.bill.billLabel} automatically while live search is unlocked.`);
+      setStatus(`${statusPrefix.toUpperCase()} DELEGATION PINNED FOR ${locationLabel}. SHOWING ${insightPayload.bill.billLabel} AUTOMATICALLY.`);
       return;
     }
 
@@ -1235,8 +1282,8 @@ async function handleLocationReady(statusPrefix = "Location set.", force = false
   } catch (error) {
     setLocationUiReady(false);
     resetRepresentativesModule();
-    resetInstantInsight(error.message || "Enter a ZIP code to unlock an instant vote insight.");
-    setStatus(error.message || "I could not load your representatives just now.");
+    resetInstantInsight(error.message || "Tap current location to unlock an instant vote insight.");
+    setStatus((error.message || "I could not load your representatives just now.").toUpperCase());
   }
 }
 
@@ -1272,11 +1319,11 @@ async function applyDetectedLocation(locationInfo) {
 
 async function handleUseMyLocation() {
   setLocationButtonState(true);
-  setStatus("Requesting your location...");
+  setStatus("REQUESTING YOUR LOCATION...");
 
   try {
     const position = await getCurrentPosition();
-    setStatus("Looking up your congressional district...");
+    setStatus("LOOKING UP YOUR CONGRESSIONAL DISTRICT...");
 
     const locationInfo = await reverseGeocodeLocation(
       position.coords.latitude,
@@ -1286,11 +1333,11 @@ async function handleUseMyLocation() {
     await applyDetectedLocation(locationInfo);
   } catch (error) {
     if (error?.code === 1) {
-      setStatus("Location access was denied. You can still enter a ZIP code or choose your district manually.");
+      setStatus("LOCATION ACCESS WAS DENIED.");
     } else if (error?.code === 2) {
-      setStatus("Your location could not be determined. Please try again or enter a ZIP code.");
+      setStatus("YOUR LOCATION COULD NOT BE DETERMINED.");
     } else if (error?.code === 3) {
-      setStatus("The location request timed out. Please try again.");
+      setStatus("THE LOCATION REQUEST TIMED OUT.");
     } else {
       setStatus(error.message || "I could not use your location just now.");
     }
@@ -1320,7 +1367,7 @@ async function attemptAutomaticLocation() {
     return;
   }
   state.autoLocationAttempted = true;
-  resetInstantInsight("Looking up your location for a live vote snapshot…");
+    resetInstantInsight("Looking up your location for a live vote snapshot…");
 
   try {
     const position = await getCurrentPosition();
@@ -1337,12 +1384,29 @@ async function attemptAutomaticLocation() {
   try {
     await applyIpDetectedLocation();
   } catch (_error) {
-    resetInstantInsight("Enter a ZIP code or allow location access to unlock an instant delegation insight.");
+    resetInstantInsight("Allow location access to unlock an instant delegation insight.");
   }
 }
 
 function wireEvents() {
-  elements.billSearch.addEventListener("input", scheduleSearch);
+  elements.billSearch.addEventListener("input", () => {
+    setSearchOverlayOpen(true);
+    scheduleSearch();
+  });
+  elements.billSearch.addEventListener("focus", () => {
+    setSearchOverlayOpen(true);
+    if (elements.billSearch.value.trim().length >= 2) {
+      void runSearch();
+      return;
+    }
+    void runSearch({ featured: true, preserveInput: true });
+  });
+  elements.billSearch.addEventListener("click", () => {
+    setSearchOverlayOpen(true);
+    if (elements.billSearch.value.trim().length < 2) {
+      void runSearch({ featured: true, preserveInput: true });
+    }
+  });
   elements.useLocationButton.addEventListener("click", handleUseMyLocation);
   if (elements.instantInsightButton) {
     elements.instantInsightButton.addEventListener("click", () => {
@@ -1357,6 +1421,11 @@ function wireEvents() {
   if (elements.infoButton) {
     elements.infoButton.addEventListener("click", () => {
       toggleInfoPanel();
+    });
+  }
+  if (elements.infoCloseButton) {
+    elements.infoCloseButton.addEventListener("click", () => {
+      toggleInfoPanel(false);
     });
   }
 
@@ -1379,7 +1448,7 @@ function wireEvents() {
     if (!isV1App()) {
       runSearch();
     } else {
-      setStatus("Find your delegation first to unlock live bill search.");
+      setStatus("TAP CURRENT LOCATION TO IDENTIFY YOUR DELEGATION.");
     }
   });
 
@@ -1455,13 +1524,21 @@ function wireEvents() {
   }
 
   document.addEventListener("click", (event) => {
-    const billButton = event.target instanceof Element
-      ? event.target.closest(".result-card")
-      : null;
-    if (!billButton) {
+    if (!(event.target instanceof Element)) {
       return;
     }
-    hideInstructionState();
+    const billButton = event.target.closest(".result-card");
+    if (billButton) {
+      hideInstructionState();
+      return;
+    }
+    if (
+      elements.searchOverlay &&
+      !elements.searchOverlay.contains(event.target) &&
+      event.target !== elements.billSearch
+    ) {
+      setSearchOverlayOpen(false);
+    }
   });
 }
 
@@ -1483,9 +1560,8 @@ async function bootstrap() {
       await runSearch();
     } else {
       showDefaultEmptyState();
-      setStatus("Find your delegation first to unlock live bill search.");
+      setStatus("TAP CURRENT LOCATION TO IDENTIFY YOUR DELEGATION.");
     }
-    void attemptAutomaticLocation();
   } catch (error) {
     setStatus(error.message);
   }

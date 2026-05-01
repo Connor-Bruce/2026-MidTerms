@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Know Your Reps",
+    "slug": "know-your-reps",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.knowyourreps.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Know Your Reps uses your location to identify your House district and Senate delegation."
+      }
+    },
+    "android": {
+      "package": "com.knowyourreps.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiBaseUrl": "https://two026-midterms.onrender.com"
+    }
+  }
+}

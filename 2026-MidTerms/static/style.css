@@ -592,7 +592,7 @@ a {
 }
 
 .detail-hidden {
-  display: none;
+  display: none !important;
 }
 
 .empty-panel {
@@ -1964,5 +1964,294 @@ a {
   50%,
   100% {
     opacity: 0;
+  }
+}
+
+/* SEARCH-FIRST WEBSITE OVERHAUL */
+.v1-app.web-overhaul {
+  --v1-shell-width: 430px;
+}
+
+.v1-app.web-overhaul .page-shell {
+  max-width: var(--v1-shell-width);
+  padding: 16px 16px 64px;
+}
+
+.v1-app.web-overhaul .workspace {
+  gap: 14px;
+}
+
+.v1-app.web-overhaul .hero {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.v1-app.web-overhaul .hero-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v1-app.web-overhaul .hero-copy {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.v1-app.web-overhaul .eyebrow {
+  margin-bottom: 8px;
+}
+
+.v1-app.web-overhaul .subcopy {
+  max-width: 10ch;
+  font-size: clamp(2rem, 10vw, 3.1rem);
+  line-height: 0.9;
+}
+
+.v1-app.web-overhaul .info-corner-button,
+.v1-app.web-overhaul .location-pin-button,
+.v1-app.web-overhaul .info-close-button {
+  min-height: 48px;
+  border: var(--v1-border);
+  background: #000000;
+  color: #ffffff;
+  box-shadow: var(--v1-shadow);
+  font-family: var(--mono-stack);
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.v1-app.web-overhaul .info-corner-button {
+  min-width: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.v1-app.web-overhaul .search-command-shell {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
+.v1-app.web-overhaul .search-command-field {
+  gap: 6px;
+}
+
+.v1-app.web-overhaul .search-command-field input {
+  min-height: 58px;
+  padding: 0 14px;
+  border: var(--v1-border);
+  background: #000000;
+  color: #ffffff;
+  box-shadow: var(--v1-shadow);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+
+.v1-app.web-overhaul .location-pin-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 0 14px;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+}
+
+.v1-app.web-overhaul .location-pin-glyph {
+  font-size: 18px;
+}
+
+.v1-app.web-overhaul .search-status {
+  margin: 0;
+}
+
+.v1-app.web-overhaul .search-overlay {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: var(--v1-border);
+  background: #000000;
+  box-shadow: 8px 8px 0 #ffffff;
+}
+
+.v1-app.web-overhaul .search-overlay.detail-hidden {
+  display: none;
+}
+
+.v1-app.web-overhaul .search-overlay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v1-app.web-overhaul .search-results {
+  display: grid;
+  gap: 10px;
+}
+
+.v1-app.web-overhaul .result-card {
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app.web-overhaul .search-empty {
+  display: grid;
+  gap: 10px;
+}
+
+.v1-app.web-overhaul .search-empty-large {
+  border: var(--v1-border);
+  box-shadow: var(--v1-shadow);
+}
+
+.v1-app.web-overhaul .search-empty-title {
+  display: block;
+  font-size: clamp(1.8rem, 8vw, 2.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.08em;
+  text-transform: uppercase;
+}
+
+.v1-app.web-overhaul .hidden-controls {
+  display: none !important;
+}
+
+.v1-app.web-overhaul .sticky-delegation-bar {
+  margin-top: 2px;
+}
+
+.v1-app.web-overhaul .sticky-delegation-inner {
+  box-shadow: 0 4px 0 #ffffff;
+}
+
+.v1-app.web-overhaul .representatives-module {
+  order: 1;
+}
+
+.v1-app.web-overhaul .representatives-module .panel-heading,
+.v1-app.web-overhaul .instant-insight-panel .panel-heading,
+.v1-app.web-overhaul .bill-panel .panel-heading,
+.v1-app.web-overhaul .votes-panel .panel-heading {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.v1-app.web-overhaul .instant-insight-panel,
+.v1-app.web-overhaul .representatives-module,
+.v1-app.web-overhaul .bill-panel,
+.v1-app.web-overhaul .votes-panel,
+.v1-app.web-overhaul .empty-panel {
+  width: 100%;
+}
+
+.v1-app.web-overhaul .instant-insight-panel {
+  order: 2;
+}
+
+.v1-app.web-overhaul .instant-insight-members {
+  display: grid;
+  gap: 8px;
+}
+
+.v1-app.web-overhaul .instant-insight-member {
+  width: 100%;
+}
+
+.v1-app.web-overhaul .empty-panel {
+  min-height: 0;
+  order: 3;
+}
+
+.v1-app.web-overhaul #billDetail {
+  order: 4;
+  display: grid;
+  gap: 14px;
+}
+
+.v1-app.web-overhaul .info-modal {
+  position: fixed;
+  inset: 16px;
+  z-index: 120;
+  overflow: auto;
+  background: #000000;
+}
+
+.v1-app.web-overhaul .info-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.v1-app.web-overhaul .info-close-button {
+  min-width: 48px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.v1-app.web-overhaul .info-sections-condensed {
+  border-top: var(--v1-border);
+}
+
+.v1-app.web-overhaul .info-sections-condensed .info-section {
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: var(--v1-border);
+}
+
+.v1-app.web-overhaul .info-sections-condensed .info-copy {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.v1-app.web-overhaul .location-pin-button:hover,
+.v1-app.web-overhaul .location-pin-button:focus-visible,
+.v1-app.web-overhaul .info-corner-button:hover,
+.v1-app.web-overhaul .info-corner-button:focus-visible,
+.v1-app.web-overhaul .info-close-button:hover,
+.v1-app.web-overhaul .info-close-button:focus-visible {
+  background: #ffffff;
+  color: #000000;
+}
+
+.v1-app.web-overhaul .location-pin-button:active,
+.v1-app.web-overhaul .info-corner-button:active,
+.v1-app.web-overhaul .info-close-button:active {
+  transform: translate(4px, 4px);
+  box-shadow: none !important;
+}
+
+.v1-app.web-overhaul .status-message[data-loading="true"],
+.v1-app.web-overhaul .location-pin-button:disabled {
+  animation: v1-status-strobe 0.45s steps(1, end) infinite;
+}
+
+@media (max-width: 720px) {
+  .v1-app.web-overhaul .page-shell {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px 16px 56px;
+  }
+
+  .v1-app.web-overhaul .info-modal {
+    inset: 10px;
   }
 }
