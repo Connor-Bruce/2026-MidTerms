@@ -4,168 +4,99 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>KNOW YOUR REPS / 2026 MIDTERMS</title>
-    <link rel="stylesheet" href="/style.css?v=20260501a" />
+    <link rel="stylesheet" href="/styles.css?v=20260501c" />
   </head>
-  <body class="v1-app web-overhaul location-locked">
-    <div class="page-shell">
-      <header class="hero hero-search-first">
-        <div class="hero-topline">
-          <div class="hero-copy">
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-row">
+          <div>
             <p class="eyebrow">KNOW YOUR REPS / 2026 MIDTERMS</p>
-            <p class="subcopy">See how your representatives actually vote on major laws.</p>
+            <h1>FEDERAL VOTE RECEIPTS</h1>
           </div>
-          <button
-            id="infoButton"
-            class="info-corner-button"
-            type="button"
-            aria-expanded="false"
-            aria-controls="infoPanel"
-          >
-            ?
+          <button id="infoToggle" class="icon-button" type="button" aria-expanded="false" aria-controls="infoPanel">
+            INFO
           </button>
         </div>
 
-        <section class="search-command-shell">
-          <label class="field search-command-field">
-            <span>Bill Search</span>
-            <input id="billSearch" type="search" placeholder="Type a bill name or number" autocomplete="off" />
-          </label>
+        <button id="useLocationButton" class="location-cta" type="button">
+          USE MY LOCATION
+        </button>
 
-          <button id="useLocationButton" class="location-pin-button" type="button">
-            <span class="location-pin-glyph" aria-hidden="true">⌖</span>
-            <span>CURRENT LOCATION</span>
+        <section class="search-stack">
+          <label class="search-label" for="billSearch">BILL SEARCH</label>
+          <input
+            id="billSearch"
+            class="search-input"
+            type="search"
+            autocomplete="off"
+            placeholder="TYPE A BILL OR KEYWORD..."
+          />
+          <button id="manualToggle" class="manual-toggle" type="button" aria-expanded="false" aria-controls="manualPanel">
+            ⌖
           </button>
 
-          <p id="statusMessage" class="status-message search-status" data-loading="false">
-            TAP CURRENT LOCATION TO IDENTIFY YOUR DELEGATION.
-          </p>
-
-          <div id="searchOverlay" class="search-overlay detail-hidden">
-            <div class="search-overlay-head">
-              <p id="searchOverlayLabel" class="search-section-label">RECOMMENDED BILLS</p>
-              <span id="matchCount" class="pill">0 results</span>
+          <div id="searchOverlay" class="search-overlay hidden">
+            <div class="overlay-head">
+              <p id="overlayLabel" class="overlay-label">RECOMMENDED BILLS</p>
+              <span id="matchCount" class="match-pill">0</span>
             </div>
-            <div id="searchResults" class="search-results"></div>
+            <div id="searchResults" class="overlay-results"></div>
           </div>
         </section>
+
+        <section id="manualPanel" class="manual-panel hidden">
+          <div class="manual-grid">
+            <label class="field">
+              <span>STATE</span>
+              <select id="stateSelect"></select>
+            </label>
+            <label class="field">
+              <span>DISTRICT</span>
+              <input id="districtInput" type="text" inputmode="numeric" placeholder="12" />
+            </label>
+          </div>
+          <button id="manualApplyButton" class="manual-apply" type="button">LOAD DISTRICT</button>
+        </section>
+
+        <p id="statusMessage" class="status-message">SEARCH IS READY. LOCATION UNLOCKS YOUR DELEGATION.</p>
       </header>
 
-      <section class="hidden-controls detail-hidden" aria-hidden="true">
-        <select id="stateSelect"></select>
-        <input id="districtInput" type="text" inputmode="numeric" />
-        <input id="zipInput" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" />
-        <label id="districtSelectField" class="detail-hidden">
-          <select id="districtSelect"></select>
-        </label>
-        <button id="clearButton" type="button">Clear</button>
+      <section id="infoPanel" class="info-panel hidden">
+        <div class="panel-head">
+          <p class="eyebrow">INFO / METHODOLOGY</p>
+          <button id="infoCloseButton" class="icon-button" type="button" aria-label="Close information panel">
+            ×
+          </button>
+        </div>
+        <div class="info-grid">
+          <div class="info-line">
+            <strong>VOTE DATA</strong>
+            <span>CONGRESS.GOV BILL DATA + OFFICIAL HOUSE AND SENATE ROLL CALLS.</span>
+          </div>
+          <div class="info-line">
+            <strong>ALIGNMENT</strong>
+            <span>VOTEHUB METHODOLOGY REFERENCES FOR 119TH CONGRESS ALIGNMENT SCORES.</span>
+          </div>
+          <div class="info-line">
+            <strong>FLOW</strong>
+            <span>SET LOCATION. SEARCH BILL. OPEN RECEIPT. CHECK LINKS.</span>
+          </div>
+        </div>
       </section>
 
-      <main class="workspace">
-        <section id="stickyDelegationBar" class="sticky-delegation-bar detail-hidden"></section>
+      <main class="app-main">
+        <section id="delegationRow" class="delegation-row hidden"></section>
 
-        <section id="representativesModule" class="panel representatives-module detail-hidden">
-          <div class="panel-heading">
-            <div>
-              <h2>Your Delegation</h2>
-              <p id="representativesMeta" class="bill-meta">Current House and Senate delegation will pin here.</p>
-            </div>
-          </div>
-          <div id="representativesCards" class="delegation-grid"></div>
-          <p class="alignment-explainer">
-            Alignment scores link to VoteHub’s methodology page and sit beside official roll-call vote receipts.
-          </p>
-        </section>
-
-        <section id="instantInsightPanel" class="panel instant-insight-panel">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow">Spotlight Vote</p>
-              <h2 id="instantInsightHeadline">SET LOCATION TO LOAD A FEATURED FLOOR VOTE.</h2>
-            </div>
-            <button id="instantInsightButton" class="ghost-button instant-insight-button detail-hidden" type="button">
-              VIEW RECEIPT
-            </button>
-          </div>
-          <p id="instantInsightSummary" class="instant-insight-summary">
-            Tap the location pin to identify your House district and Senate delegation instantly.
-          </p>
-          <div id="instantInsightMembers" class="instant-insight-members"></div>
-          <p id="instantInsightMeta" class="alignment-explainer instant-insight-meta">
-            Congress.gov bill data + official House and Senate roll call feeds.
-          </p>
-        </section>
-
-        <section id="infoPanel" class="panel info-modal detail-hidden">
-          <div class="info-modal-head">
-            <p class="eyebrow">INFO / METHODOLOGY</p>
-            <button id="infoCloseButton" class="info-close-button" type="button" aria-label="Close information panel">
-              ×
-            </button>
-          </div>
-          <div class="info-sections info-sections-condensed">
-            <article class="info-section">
-              <div class="info-copy-block">
-                <h3>HOW IT WORKS</h3>
-                <p class="info-copy">
-                  KNOW YOUR REPS maps your current congressional delegation, surfaces featured federal bills, and shows
-                  the official roll-call record for each vote.
-                </p>
-              </div>
-            </article>
-
-            <article class="info-section">
-              <div class="info-copy-block">
-                <h3>DATA SOURCES</h3>
-                <p class="info-copy">
-                  Bill text and actions come from Congress.gov. Vote positions come from official House and Senate
-                  roll-call feeds. Alignment references link directly to VoteHub methodology.
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section id="emptyState" class="panel empty-panel">
+        <section id="emptyState" class="empty-state">
           <h2>LOCATION REQUIRED</h2>
-          <p>Use the location pin to load your delegation, then search bills or open a featured vote receipt.</p>
+          <p>USE CURRENT LOCATION OR OPEN THE MAP ICON TO ENTER STATE + DISTRICT MANUALLY.</p>
         </section>
 
-        <section id="billDetail" class="detail-hidden">
-          <article class="panel bill-panel">
-            <div class="panel-heading">
-              <div>
-                <p id="billLabel" class="eyebrow"></p>
-                <h2 id="billTitle"></h2>
-              </div>
-              <span id="lawBadge" class="law-badge"></span>
-            </div>
-            <p id="billMeta" class="bill-meta"></p>
-            <p id="billDescription" class="bill-description"></p>
-            <div class="bill-trust-row">
-              <a id="billSourceLink" class="source-link detail-hidden" href="#" target="_blank" rel="noreferrer">Congress.gov bill page</a>
-              <a
-                id="billMethodologyLink"
-                class="methodology-link"
-                href="https://api.congress.gov/"
-                target="_blank"
-                rel="noreferrer"
-                title="Bill text and actions come from Congress.gov. Member vote positions come from official House and Senate roll call feeds. Alignment scores link out to VoteHub's methodology page."
-              >
-                Methodology
-              </a>
-            </div>
-          </article>
-
-          <article class="panel votes-panel">
-            <div class="panel-heading">
-              <h2>Vote Receipts</h2>
-            </div>
-            <div id="voteTimeline" class="vote-timeline"></div>
-          </article>
-        </section>
+        <section id="receiptStack" class="receipt-stack"></section>
       </main>
     </div>
 
-    <script src="/app.js?v=20260501a" type="module"></script>
+    <script src="/script.js?v=20260501c" defer></script>
   </body>
 </html>
